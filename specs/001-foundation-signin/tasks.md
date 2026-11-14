@@ -154,7 +154,7 @@ back from `users/{uid}`, stays signed in, can sign out.
   `allowlist` doc ID)
 - [X] T031 [P] `AGENTS.md` with commands, deploy trigger and the setup guide's B11 lessons;
   `CLAUDE.md` containing `@AGENTS.md`
-- [ ] T032 Run lint, format:check, test, test:rules, build; manual quickstart steps 1–5 in a
+- [X] T032 Run lint, format:check, test, test:rules, build; manual quickstart steps 1–5 in a
   browser at phone and tablet widths
 
 ---

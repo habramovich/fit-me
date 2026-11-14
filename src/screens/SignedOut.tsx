@@ -11,7 +11,7 @@ export function SignedOut() {
   }
 
   return (
-    <main className="screen">
+    <main className="auth-screen">
       <h1>FitMe</h1>
       <p>Your home workouts, planned around you.</p>
       <button type="button" className="primary" onClick={onClick}>

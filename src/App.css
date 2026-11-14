@@ -1,6 +1,7 @@
-/* Mobile-first, single column. See specs/001-foundation-signin/contracts/ui-screens.md. */
+/* Sign-in screens (loading, signed out, checking invite, invite-only).
+   See specs/001-foundation-signin/contracts/ui-screens.md. */
 
-.screen {
+.auth-screen {
   width: 100%;
   max-width: 32rem;
   margin: auto;
@@ -12,26 +13,23 @@
   overflow-wrap: anywhere;
 }
 
-.screen h1 {
-  margin: 0;
+.auth-screen h1 {
   font-size: clamp(1.75rem, 6vw, 2.25rem);
-  line-height: 1.2;
 }
 
-.screen p {
-  margin: 0;
+.auth-screen p {
   font-size: 1.125rem;
 }
 
-.note {
+.auth-screen .note {
   color: var(--muted);
 }
 
-.error {
+.auth-screen .error {
   color: var(--error);
 }
 
-button {
+.auth-screen button {
   min-height: 48px;
   width: 100%;
   padding: 0.75rem 1.25rem;
@@ -39,26 +37,20 @@ button {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
-  font: inherit;
   font-size: 1.0625rem;
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
 }
 
-button.primary {
+.auth-screen button.primary {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-text);
 }
 
-button:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
 @media (min-width: 40rem) {
-  button {
+  .auth-screen button {
     width: auto;
     align-self: center;
     min-width: 16rem;

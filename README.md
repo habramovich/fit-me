@@ -23,6 +23,17 @@ the seeded allowlist. Any other email shows the invite-only screen.
 The seed lives in `emulator-data/`. To change it, edit `scripts/seed-emulator.mjs` and run
 `npm run seed`. Changes made while `npm run emulators` runs are not saved.
 
+## What's in the app
+
+- **Today**: a sample session of the owner's favourite exercises, with **Start**.
+- **Library**: every exercise with search, technique and favourites filters; each exercise has an
+  animated figure (direction arrows, breathe in/out), recommended reps, how-to steps and easier /
+  harder versions. Mark Favourite or Not for me.
+- **Player**: full-screen follow-along with countdowns, sets, sides, pause/back/skip, a rating
+  after each exercise, and the screen kept awake.
+- Installable to the home screen and usable offline after the first sign-in.
+- Figure review for new exercise batches at `#/review` (development and preview channels only).
+
 ## Check
 
 ```bash

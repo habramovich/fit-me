@@ -28,9 +28,31 @@ local work uses the emulators with project `demo-fitme`.
 
 - `src/firebase.ts`: config and emulator wiring
 - `src/auth/`: session state machine (pure, tested), `useSession` hook, sign-in helpers
+- `src/app/`: shell, hash router, tab bar, marks context
+- `src/exercises/`: content model (`types.ts`), one module per exercise in `data/`, index,
+  sample routine; `exercises.test.ts` validates every exercise
+- `src/figure/`: pure geometry (`geometry.ts`, tested) and the `<Figure>` SVG renderer
+- `src/player/`: pure player machine (tested), `usePlayer`, wake lock, player screen
 - `src/data/repo/`: the only place that touches Firestore
 - `src/screens/`: one component per screen
 - `firestore.rules` + `tests/rules/`: rules and their access-matrix tests
+
+## Adding exercises
+
+1. One file in `src/exercises/data/<id>.ts`, registered in `src/exercises/index.ts`, with the
+   next `batch` number. Follow an existing file of the same view (side or front).
+2. Figure box is 250 × 180, mat top at y = 152. Side view: head left by default; `N` = near side
+   (drawn dark, in front), `F` = far side (light, behind). Front view: `N` = the figure's right,
+   drawn on the viewer's left. Keep limb lengths roughly constant between keyframes (thigh ≈ 42,
+   shin ≈ 42, upper arm ≈ 30, forearm ≈ 28).
+3. Every transition needs a label and arrows (a two-pose figure may give only the outward
+   arrows; the return reverses them). Repeated movements in side view need `breath` per
+   transition. Doses need a target inside the recommended range. Cardio needs a `lowImpact`
+   version.
+4. `npm test` validates all of it. Then look at every keyframe: run the app (`#/review`), or
+   render PNGs from a throwaway test, before asking the owner.
+5. Owner review: `npx firebase hosting:channel:deploy batch-<n> --expires 7d --project
+   fit-me-today`, then open the preview URL + `#/review`.
 
 ## Lessons
 
@@ -45,3 +67,6 @@ local work uses the emulators with project `demo-fitme`.
 - Check UI work in a real browser, at phone and tablet widths.
 - Package versions move fast here (Vite 8, TypeScript 7, Firebase 13); check the installed
   `.d.ts` files rather than relying on memory of older APIs.
+- On Windows, run Vitest from PowerShell (`C:\…` path). From Git Bash (`c:\…`) Vitest loads
+  twice and every suite fails with "failed to find the current suite".
+- Figure coordinates are easy to get subtly wrong; always look at the rendered keyframes.

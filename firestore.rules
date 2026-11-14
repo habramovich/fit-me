@@ -32,6 +32,22 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow get, create, update: if isInvited() && isOwner(uid);
+
+      // Favourite / Not for me per exercise. Clearing a mark deletes the document.
+      match /exerciseMarks/{exerciseId} {
+        allow read, delete: if isInvited() && isOwner(uid);
+        allow create, update: if isInvited() && isOwner(uid)
+          && request.resource.data.keys().hasOnly(['mark', 'updatedAt'])
+          && request.resource.data.mark in ['favourite', 'notForMe'];
+      }
+
+      // One document per player run. No deletes: history is kept.
+      match /sessions/{sessionId} {
+        allow read: if isInvited() && isOwner(uid);
+        allow create, update: if isInvited() && isOwner(uid)
+          && request.resource.data.items is list
+          && request.resource.data.items.size() <= 50;
+      }
     }
 
     // Every new collection or subcollection needs its own match block.

@@ -1,0 +1,74 @@
+.fm-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fm-figure__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.fm-figure__breath {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+.fm-breath {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fm-breath svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fm-breath--in {
+  background: var(--yoga-bg);
+  color: var(--yoga-fg);
+}
+
+.fm-breath--out {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.fm-breath--next {
+  opacity: 0.75;
+}
+
+.fm-breath--note {
+  background: var(--surface-sunk);
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.fm-figure__label {
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fm-figure__label::before {
+  content: '';
+  width: 22px;
+  height: 0;
+  border-top: 3px dotted var(--arrow);
+  flex: none;
+}

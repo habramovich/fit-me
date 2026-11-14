@@ -144,6 +144,92 @@ describe('email case', () => {
   })
 })
 
+describe('exercise marks (002 rows 17–22)', () => {
+  const mark = (m: string) => ({ mark: m, updatedAt: new Date() })
+
+  it('17. A can set a valid mark on own record', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(A), 'users', A.uid, 'exerciseMarks', 'dead-bug'), mark('favourite')),
+    )
+    await assertSucceeds(
+      setDoc(doc(as(A), 'users', A.uid, 'exerciseMarks', 'dead-bug'), mark('notForMe')),
+    )
+  })
+
+  it('18. A cannot set an invalid mark or extra fields', async () => {
+    await assertFails(setDoc(doc(as(A), 'users', A.uid, 'exerciseMarks', 'dead-bug'), mark('love')))
+    await assertFails(
+      setDoc(doc(as(A), 'users', A.uid, 'exerciseMarks', 'dead-bug'), {
+        ...mark('favourite'),
+        extra: 1,
+      }),
+    )
+  })
+
+  it('19. A can delete own mark', async () => {
+    const ref = doc(as(A), 'users', A.uid, 'exerciseMarks', 'dead-bug')
+    await assertSucceeds(setDoc(ref, mark('favourite')))
+    await assertSucceeds(deleteDoc(ref))
+  })
+
+  it('20. A can get and list own marks', async () => {
+    await assertSucceeds(getDoc(doc(as(A), 'users', A.uid, 'exerciseMarks', 'dead-bug')))
+    await assertSucceeds(getDocs(collection(as(A), 'users', A.uid, 'exerciseMarks')))
+  })
+
+  it("21. A cannot read or write B's marks", async () => {
+    await assertFails(getDoc(doc(as(A), 'users', B.uid, 'exerciseMarks', 'x')))
+    await assertFails(getDocs(collection(as(A), 'users', B.uid, 'exerciseMarks')))
+    await assertFails(setDoc(doc(as(A), 'users', B.uid, 'exerciseMarks', 'x'), mark('favourite')))
+  })
+
+  it('22. an uninvited user cannot write marks', async () => {
+    await assertFails(setDoc(doc(as(U), 'users', U.uid, 'exerciseMarks', 'x'), mark('favourite')))
+  })
+})
+
+describe('sessions (002 rows 23–27)', () => {
+  const item = { exerciseId: 'dead-bug', version: 'standard', outcome: 'done', rating: 'right' }
+  const session = (n: number) => ({
+    schemaVersion: 1,
+    routine: 'sample',
+    startedAt: new Date(),
+    endedAt: null,
+    items: Array.from({ length: n }, () => item),
+  })
+
+  it('23. A can create and update own session', async () => {
+    const ref = doc(as(A), 'users', A.uid, 'sessions', 's1')
+    await assertSucceeds(setDoc(ref, session(0)))
+    await assertSucceeds(updateDoc(ref, { items: [item, item], endedAt: new Date() }))
+  })
+
+  it('24. A cannot create a session with more than 50 items', async () => {
+    await assertFails(setDoc(doc(as(A), 'users', A.uid, 'sessions', 's1'), session(51)))
+  })
+
+  it('25. A cannot delete a session', async () => {
+    const ref = doc(as(A), 'users', A.uid, 'sessions', 's1')
+    await assertSucceeds(setDoc(ref, session(1)))
+    await assertFails(deleteDoc(ref))
+  })
+
+  it('26. A can get and list own sessions', async () => {
+    await assertSucceeds(getDoc(doc(as(A), 'users', A.uid, 'sessions', 's1')))
+    await assertSucceeds(getDocs(collection(as(A), 'users', A.uid, 'sessions')))
+  })
+
+  it("27. A cannot read or write B's sessions", async () => {
+    await assertFails(getDoc(doc(as(A), 'users', B.uid, 'sessions', 's1')))
+    await assertFails(setDoc(doc(as(A), 'users', B.uid, 'sessions', 's1'), session(0)))
+  })
+
+  it('28. other subcollections under a user are denied', async () => {
+    await assertFails(setDoc(doc(as(A), 'users', A.uid, 'notes', 'x'), { a: 1 }))
+    await assertFails(getDoc(doc(as(A), 'users', A.uid, 'notes', 'x')))
+  })
+})
+
 describe('everything else', () => {
   it('16. any other collection is denied', async () => {
     const db = as(A)
