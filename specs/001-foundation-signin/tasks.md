@@ -169,8 +169,8 @@ back from `users/{uid}`, stays signed in, can sign out.
 - [X] T035 ⏸ Owner OK, then guide B2: `github-deployer` service account with the five roles
 - [X] T036 Guide B3 on `habramovich/fit-me`: `prod` environment, `FIREBASE_SERVICE_ACCOUNT`
   secret via temp file (never printed), `FIREBASE_PROJECT_ID` variable
-- [ ] T037 ⏸ Owner OK, then merge to `main` and push; `gh run watch`; sign in on the live site
-- [ ] T038 Branch protection requiring `CI` (report and skip if plan doesn't allow)
+- [X] T037 ⏸ Owner OK, then merge to `main` and push; `gh run watch`; sign in on the live site
+- [X] T038 Branch protection requiring `CI` (report and skip if plan doesn't allow)
 
 ---
 
