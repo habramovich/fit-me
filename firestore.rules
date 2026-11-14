@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Access matrix: specs/001-foundation-signin/contracts/firestore-access.md
+// Tests: tests/rules/firestore.rules.test.ts (npm run test:rules)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    // Invited = verified Google email with an entry in /allowlist/{lowercased email}.
+    function isInvited() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/allowlist/$(myEmail()));
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    // Managed by the owner in the Firebase console. A person may read only their own entry,
+    // so the app can tell "not invited" from "offline".
+    match /allowlist/{email} {
+      allow get: if signedIn() && email == myEmail();
+    }
+
+    match /users/{uid} {
+      allow get, create, update: if isInvited() && isOwner(uid);
+    }
+
+    // Every new collection or subcollection needs its own match block.
+    // Anything not matched above is denied.
+  }
+}

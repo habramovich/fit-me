@@ -1,14 +1,3 @@
-<!--
-Sync Impact Report
-- Version change: template → 1.0.0 (initial ratification)
-- Principles defined: I. Spec Before Code, II. Smallest Useful Slice, III. Simplicity / YAGNI,
-  IV. Test What Matters, V. Local-First & Private
-- Sections added: Technology Constraints, Development Workflow, Governance
-- Templates reviewed: plan-template.md (Constitution Check gate applies as-is),
-  spec-template.md, tasks-template.md (no changes required)
-- Deferred items: none
--->
-
 # FitMe Constitution
 
 ## Core Principles
@@ -25,29 +14,36 @@ story in a spec must be independently shippable. Prefer finishing one slice end-
 over starting several. If a slice takes more than a few sessions, split it.
 
 ### III. Simplicity / YAGNI
-Build only what the current spec needs. No speculative abstractions, no state-management
-or UI libraries until a concrete need is shown, no backend until local storage is
-demonstrably insufficient. Any added dependency or layer must be justified in the plan's
-Complexity Tracking table.
+Build only what the current spec needs. No speculative abstractions, and no state-management
+or UI libraries until a concrete need is shown. Firebase (Auth, Firestore, Hosting) is the
+only backend; no server-side functions until a spec justifies the paid plan. Any added
+dependency or layer MUST be justified in the plan's Complexity Tracking table.
 
 ### IV. Test What Matters
-Domain logic (calculations, data transforms, persistence) has unit tests written alongside
-the code. UI is covered by a small number of high-value component or end-to-end tests,
-not exhaustive snapshots. `npm test` and `npm run build` must pass before a feature is
-considered done.
+Domain logic (session planning, calculations, data transforms, persistence) has unit tests
+written alongside the code. UI is covered by a small number of high-value component or
+end-to-end tests, not exhaustive snapshots. `npm test` and `npm run build` MUST pass before a
+feature is considered done.
 
-### V. Local-First & Private
-User data stays on the user's device by default (localStorage / IndexedDB). No accounts,
-analytics, or third-party data sharing unless a spec explicitly calls for it and explains
-why. Stored data has a versioned shape so it can be migrated safely.
+### V. Private & Synced
+Users sign in with Google. Each user's data lives under `users/{uid}` in Firestore, with the
+offline cache enabled so the app works without a connection. Access is limited to an allowlist
+of invited emails, enforced in Firestore security rules; a user can never read another user's
+data. No analytics and no third-party data sharing unless a spec explicitly calls for it and
+explains why. Stored data has a versioned shape so it can be migrated safely.
 
 ## Technology Constraints
 
-- **Stack**: Vite + React + TypeScript (strict mode), single-page app.
-- **Persistence**: Browser storage behind a thin repository module; no backend initially.
+- **Stack**: Vite + React + TypeScript (strict mode), single-page app, mobile and tablet first.
+- **Persistence**: Firestore behind a thin repository module (`src/data/repo/`); writes update
+  only the fields that changed.
+- **Exercise library**: static data in the repo (JSON + images), not in Firestore.
+- **Hosting**: Firebase Hosting, deployed by GitHub Actions on push to `main`.
+- **Local development**: the Firebase emulators (Auth, Firestore, Hosting).
 - **Testing**: Vitest (+ React Testing Library for components).
 - **Styling**: Plain CSS / CSS modules unless a plan justifies more.
-- **Tooling**: npm, ESLint, Prettier. Keep the dependency list short and current.
+- **Tooling**: npm, oxlint (the Vite template's linter), Prettier. Keep the dependency list
+  short and current.
 
 ## Development Workflow
 
@@ -56,9 +52,9 @@ why. Stored data has a versioned shape so it can be migrated safely.
 3. `/speckit-tasks` → ordered task list (optionally `/speckit-analyze`).
 4. `/speckit-implement` → build, test, commit.
 
-Work happens on a feature branch per spec and merges to `main` once tests and build pass.
-As a solo project, self-review against the spec's acceptance scenarios replaces formal
-code review.
+Work happens on a feature branch per spec. CI (lint, `prettier --check`, tests, build) MUST
+pass before merging to `main`, and merging to `main` deploys to production. As a solo project,
+self-review against the spec's acceptance scenarios replaces formal code review.
 
 ## Governance
 
@@ -67,4 +63,4 @@ gate; any deviation is recorded in Complexity Tracking with a reason. Amendments
 via `/speckit-constitution`, versioned with semantic versioning (MAJOR: principle removed or
 redefined; MINOR: principle or section added; PATCH: wording), and dated below.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-14 | **Last Amended**: 2026-11-14
+**Version**: 2.0.1 | **Ratified**: 2026-11-14 | **Last Amended**: 2026-11-14
