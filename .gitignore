@@ -7,6 +7,10 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+*-debug.log*
+
+# Firebase CLI cache
+.firebase/
 
 # Env files
 .env

@@ -1,0 +1,44 @@
+{
+  "name": "fit-me",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "oxlint",
+    "format": "prettier --write",
+    "format:check": "prettier --check .",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-fitme \"vitest run --project rules\"",
+    "emulators": "firebase emulators:start --project demo-fitme --import ./emulator-data",
+    "seed": "firebase emulators:exec --only auth,firestore --project demo-fitme --export-on-exit ./emulator-data \"node scripts/seed-emulator.mjs\""
+  },
+  "dependencies": {
+    "firebase": "^13.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.10",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "firebase-tools": "^15.36.0",
+    "jsdom": "^31.0.1",
+    "oxlint": "^1.90.0",
+    "prettier": "^3.10.1",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}

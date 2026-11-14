@@ -1,0 +1,43 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # firebase-tools is a pinned dev dependency, so this also installs the deploy CLI.
+      - run: npm ci && npm run build
+      # The key goes to the runner's temp dir, never inside the workspace.
+      - env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      # The CLI's token exchange can fail intermittently ("Failed to authenticate"); retry.
+      - env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+        run: |
+          for n in 1 2 3 4 5; do
+            npx firebase deploy --only hosting,firestore:rules,firestore:indexes \
+              --project "$PROJECT" --non-interactive && exit 0
+            sleep $((15 * n))
+          done
+          exit 1
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

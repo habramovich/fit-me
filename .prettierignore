@@ -1,0 +1,8 @@
+dist
+coverage
+emulator-data
+.specify
+.claude
+specs
+package-lock.json
+*.md

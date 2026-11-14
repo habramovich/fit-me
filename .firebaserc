@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "fit-me-today",
+    "prod": "fit-me-today"
+  }
+}
