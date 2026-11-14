@@ -37,5 +37,7 @@ npm run dev           # terminal 2
 ## After deploy
 
 1. `gh run watch` on the deploy run; expect success.
-2. Open `https://<project-id>.web.app` on a phone; sign in with an allowlisted account.
-3. `npx firebase firestore:rules:get --project <project-id>` matches `firestore.rules`.
+2. Open `https://fit-me-today.web.app` on a phone; sign in with an allowlisted account.
+3. Live rules match `firestore.rules`: Firebase console → Firestore → Rules, or the Rules API
+   (`GET https://firebaserules.googleapis.com/v1/projects/fit-me-today/releases/cloud.firestore`,
+   then the returned ruleset). firebase-tools 15 has no `firestore:rules:get` command.
