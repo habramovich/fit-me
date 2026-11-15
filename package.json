@@ -15,6 +15,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",
+    "render:figures": "vitest run --project render",
     "test:rules": "firebase emulators:exec --only firestore --project demo-fitme \"vitest run --project rules\"",
     "emulators": "firebase emulators:start --project demo-fitme --import ./emulator-data",
     "seed": "firebase emulators:exec --only auth,firestore --project demo-fitme --export-on-exit ./emulator-data \"node scripts/seed-emulator.mjs\""

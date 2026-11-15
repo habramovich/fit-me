@@ -49,8 +49,11 @@ local work uses the emulators with project `demo-fitme`.
    arrows; the return reverses them). Repeated movements in side view need `breath` per
    transition. Doses need a target inside the recommended range. Cardio needs a `lowImpact`
    version.
-4. `npm test` validates all of it. Then look at every keyframe: run the app (`#/review`), or
-   render PNGs from a throwaway test, before asking the owner.
+4. `npm test` validates all of it. Then look at every keyframe before asking the owner:
+   `npm run render:figures` (or `FIGURES=id1,id2`) writes `figure-renders/<id>.png`, one row per
+   version and one column per key pose with that move's arrows, drawn from the real `<Figure>`.
+   Movements in the horizontal plane (e.g. hip circles) use a `ring` instead of arrows; circles
+   in the front-to-back plane (e.g. shoulder rotations) read best in side view.
 5. Owner review: `npx firebase hosting:channel:deploy batch-<n> --expires 7d --project
    fit-me-today`, then open the preview URL + `#/review`.
 

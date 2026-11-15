@@ -15,6 +15,15 @@ export default defineConfig({
         },
       },
       {
+        // Dev tool, not run in CI: npm run render:figures
+        extends: true,
+        test: {
+          name: 'render',
+          environment: 'node',
+          include: ['tools/**/*.test.tsx'],
+        },
+      },
+      {
         test: {
           name: 'rules',
           environment: 'node',

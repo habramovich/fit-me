@@ -29,12 +29,9 @@ function stance(dx: number, dy: number): Pose {
 const figure: FigureSpec = {
   view: 'front',
   keyframes: [stance(-10, 0), stance(0, 4), stance(10, 0), stance(0, -3)],
-  arrows: [
-    [{ p: [96, 102], q: [120, 124], bend: 8 }],
-    [{ p: [130, 124], q: [154, 102], bend: 8 }],
-    [{ p: [156, 94], q: [136, 74], bend: 8 }],
-    [{ p: [114, 74], q: [94, 94], bend: 8 }],
-  ],
+  // A hoop at hip height shows the horizontal circle; the dot moves with the hips.
+  ring: { center: [125, 97], rx: 34, ry: 10, start: Math.PI, dir: -1 },
+  arrows: [[], [], [], []],
   labels: ['Hips forward', 'Hips to the left', 'Hips back', 'Hips to the right'],
   alt: 'Standing with hands on hips, feet hip-width apart, drawing a slow circle with the hips: right, forward, left and back.',
 }

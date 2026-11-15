@@ -1,6 +1,6 @@
 // Pure figure maths: timing, pose interpolation, arrows and limb segments.
 // See specs/002-exercise-library-player/research.md (R3).
-import type { Arrow, Breath, FigureSpec, Limbs, Point, Pose } from '../exercises/types'
+import type { Arrow, Breath, FigureSpec, Limbs, Point, Pose, Ring } from '../exercises/types'
 
 export interface Timing {
   /** Seconds holding each key pose before moving on. */
@@ -113,6 +113,25 @@ export function arrowPaths(arrow: Arrow): { line: string; head: string } {
     line: `M${fmt(p)} Q${fmt(c)} ${fmt(end)}`,
     head: `M${fmt(q)} L${fmt(left)} L${fmt(right)} Z`,
   }
+}
+
+/** Where the ring's dot is: it moves a quarter turn per transition for 4 keyframes, etc. */
+export function ringDot(ring: Ring, count: number, phase: Phase): { point: Point; front: boolean } {
+  const angle = ring.start + ring.dir * ((phase.transition + phase.k) / count) * 2 * Math.PI
+  const point: Point = [
+    ring.center[0] + ring.rx * Math.cos(angle),
+    ring.center[1] + ring.ry * Math.sin(angle),
+  ]
+  return { point, front: Math.sin(angle) > 0 }
+}
+
+/** SVG paths for the back (upper) and front (lower) halves of the ring. */
+export function ringPaths(ring: Ring): { back: string; front: string } {
+  const [cx, cy] = ring.center
+  const l = `${(cx - ring.rx).toFixed(1)} ${cy.toFixed(1)}`
+  const r = `${(cx + ring.rx).toFixed(1)} ${cy.toFixed(1)}`
+  const arc = `A${ring.rx} ${ring.ry} 0 0 0`
+  return { back: `M${r} ${arc} ${l}`, front: `M${l} ${arc} ${r}` }
 }
 
 export type LimbPart = 'upperArm' | 'forearm' | 'thigh' | 'shin' | 'foot'
