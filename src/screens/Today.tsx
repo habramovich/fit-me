@@ -1,71 +1,84 @@
 import { useState } from 'react'
-import { useMarks } from '../app/marksContext'
 import { href } from '../app/router'
-import { getExercise } from '../exercises'
-import { estimateMinutes, sampleRoutine } from '../exercises/sample'
+import { ROUTINES, ROUTINE_ORDER, routineForTime } from '../planner/routines'
+import type { Profile, RoutineId } from '../profile/types'
 
 const dateFormat = new Intl.DateTimeFormat(undefined, {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
 })
+const MINUTES = [5, 10, 15, 20, 30, 45]
 
-export function Today({ name }: { name: string }) {
-  const { marks } = useMarks()
-  const [today] = useState(() => dateFormat.format(new Date()))
-  const items = sampleRoutine(marks)
-  const minutes = estimateMinutes(items)
+export function Today({ name, profile }: { name: string; profile: Profile }) {
+  const [now] = useState(() => new Date())
+  const [routine, setRoutine] = useState<RoutineId>(() => routineForTime(now))
+  const [minutes, setMinutes] = useState(() => profile.routineMinutes[routineForTime(now)])
+
+  const pickRoutine = (id: RoutineId) => {
+    setRoutine(id)
+    setMinutes(profile.routineMinutes[id])
+  }
+  const minuteOptions = [...new Set([...MINUTES, minutes])].sort((a, b) => a - b)
 
   return (
     <main className="screen">
       <header className="screen__head">
-        <p className="muted">{today}</p>
+        <p className="muted">{dateFormat.format(now)}</p>
         <h1>Hi, {name}</h1>
       </header>
 
-      <section className="card stack" aria-labelledby="sample-h">
-        <div className="row-between">
-          <h2 id="sample-h">Your favourites</h2>
-          <span className="muted">{items.length > 0 ? `About ${minutes} min` : ''}</span>
-        </div>
-        {items.length > 0 ? (
-          <>
-            <p className="muted">
-              {items.length} exercises: warm-up, main and cool-down. The planner that fits sessions
-              to your time comes in a later update.
-            </p>
-            <ol className="plain-list">
-              {items.map((item) => (
-                <li key={item.exerciseId}>
-                  <a href={href({ name: 'exercise', id: item.exerciseId })}>
-                    {getExercise(item.exerciseId)?.name}
-                  </a>
-                </li>
-              ))}
-            </ol>
-            <a
-              className="btn btn--primary btn--big"
-              href={href({ name: 'player', routine: 'sample' })}
+      {profile.goals.length === 0 && (
+        <a className="card notice" href={href({ name: 'setup', step: 1 })}>
+          <strong>Finish your profile</strong>
+          <span className="muted small">So sessions fit your goals and focus areas.</span>
+        </a>
+      )}
+
+      <section className="stack" aria-labelledby="routine-h">
+        <h2 id="routine-h">What kind of session?</h2>
+        <div className="routine-grid" role="group" aria-label="Routine">
+          {ROUTINE_ORDER.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={routine === id ? 'routine routine--on' : 'routine'}
+              aria-pressed={routine === id}
+              onClick={() => pickRoutine(id)}
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                fill="currentColor"
-              >
-                <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
-              </svg>
-              Start
-            </a>
-          </>
-        ) : (
-          <p>
-            You’ve marked all of these “Not for me”. <a href="#/library">Browse the library</a> to
-            change that.
-          </p>
-        )}
+              <span className="routine__name">{ROUTINES[id].name}</span>
+              <span className="routine__hint">{ROUTINES[id].hint}</span>
+            </button>
+          ))}
+        </div>
       </section>
+
+      <section className="stack" aria-labelledby="time-h">
+        <h2 id="time-h">How much time do you have?</h2>
+        <div className="chips" role="group" aria-label="Minutes">
+          {minuteOptions.map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={minutes === m ? 'chip chip--on' : 'chip'}
+              aria-pressed={minutes === m}
+              onClick={() => setMinutes(m)}
+            >
+              {m} min
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <a
+        className="btn btn--primary btn--big"
+        href={href({ name: 'plan', plan: { routine, minutes, shuffle: 0, swaps: {} } })}
+      >
+        Plan my {minutes}-minute {ROUTINES[routine].name.toLowerCase()}
+      </a>
+      <a className="btn btn--link" href={href({ name: 'player', routine: 'sample' })}>
+        Or play your eight favourites
+      </a>
     </main>
   )
 }

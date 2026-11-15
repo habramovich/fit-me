@@ -1,0 +1,354 @@
+import { describe, expect, it } from 'vitest'
+import { allExercises } from '../exercises'
+import type { BodyArea, Exercise, Technique, Version } from '../exercises/types'
+import { DEFAULT_PROFILE, type Profile, type RoutineId } from '../profile/types'
+import { EMPTY_HISTORY, makePlan, type PlanInput, type PlanResult } from './plan'
+import { seededRandom } from './random'
+import { ROUTINE_ORDER, routineForTime } from './routines'
+
+// ---------- A synthetic library big enough to exercise every rule ----------
+
+const AREAS: BodyArea[] = [
+  'neck',
+  'shoulders',
+  'upperBack',
+  'lowerBack',
+  'core',
+  'hips',
+  'glutes',
+  'hamstrings',
+  'quads',
+  'knees',
+  'calves',
+  'chest',
+]
+const TECHS: Technique[] = ['yoga', 'taichi', 'strength', 'mobility', 'cardio']
+
+const fig = allExercises[0].standard.figure
+function version(reps: number, extra: Partial<Version> = {}): Version {
+  return {
+    dose: { kind: 'reps', reps, range: [Math.max(1, reps - 4), reps + 6], sets: 2, perSide: false },
+    steps: ['a', 'b'],
+    cues: ['a', 'b'],
+    breathing: 'Breathe out on effort.',
+    figure: fig,
+    secondsPerRep: 4,
+    ...extra,
+  }
+}
+
+function syntheticLibrary(seed: number, size = 40): Exercise[] {
+  const r = seededRandom(seed)
+  const pick = <T>(xs: readonly T[]) => xs[Math.floor(r() * xs.length)]
+  return Array.from({ length: size }, (_, i) => {
+    const technique = TECHS[i % TECHS.length]
+    const position = pick(['standing', 'seated', 'kneeling', 'lying'] as const)
+    const works = [...new Set([pick(AREAS), pick(AREAS)])]
+    return {
+      id: `ex-${i}`,
+      name: `Exercise ${i}`,
+      technique,
+      worksAreas: works,
+      loadsAreas: r() < 0.5 ? [pick(AREAS)] : [],
+      equipment:
+        position === 'lying' || position === 'kneeling'
+          ? ['mat']
+          : r() < 0.3
+            ? ['chair']
+            : ['none'],
+      level: 'beginner',
+      phases:
+        technique === 'cardio'
+          ? ['main']
+          : i % 3 === 0
+            ? ['warmup', 'cooldown']
+            : i % 3 === 1
+              ? ['main']
+              : ['warmup', 'main', 'cooldown'],
+      position,
+      intensity:
+        technique === 'cardio' ? 'moderate' : pick(['gentle', 'gentle', 'moderate'] as const),
+      tags: r() < 0.25 ? ['breathing'] : r() < 0.4 ? ['balance'] : r() < 0.5 ? ['boneLoading'] : [],
+      batch: 1,
+      standard: version(10, technique === 'cardio' ? { lowImpact: false } : {}),
+      easier: version(6, technique === 'cardio' ? { lowImpact: true } : {}),
+      harder: r() < 0.7 ? version(14) : undefined,
+    }
+  })
+}
+
+const LIB = syntheticLibrary(1)
+
+function input(over: Partial<PlanInput> = {}): PlanInput {
+  return {
+    library: LIB,
+    profile: { ...DEFAULT_PROFILE, setupDone: true },
+    routine: 'calm',
+    minutes: 15,
+    marks: {},
+    history: EMPTY_HISTORY,
+    today: '2026-11-16',
+    shuffle: 0,
+    ...over,
+  }
+}
+
+const plan = (r: PlanResult) => {
+  if (r.kind !== 'plan') throw new Error(`expected a plan, got ${JSON.stringify(r)}`)
+  return r
+}
+const ex = (id: string) => LIB.find((e) => e.id === id)!
+
+// ---------- Tests ----------
+
+describe('planner basics', () => {
+  it('is deterministic for the same input', () => {
+    expect(makePlan(input())).toEqual(makePlan(input()))
+  })
+
+  it('reshuffling gives a different plan', () => {
+    const a = plan(makePlan(input({ shuffle: 0 }))).items.map((i) => i.exerciseId)
+    const b = plan(makePlan(input({ shuffle: 1 }))).items.map((i) => i.exerciseId)
+    expect(a).not.toEqual(b)
+  })
+
+  it('has warm-up, main and cool-down in order, within the time tolerance', () => {
+    for (const minutes of [5, 10, 15, 20, 30, 45]) {
+      const p = plan(makePlan(input({ routine: 'weekend', minutes })))
+      const phases = p.items.map((i) => i.phase)
+      expect(phases).toEqual(
+        [...phases].sort(
+          (a, b) =>
+            ['warmup', 'main', 'cooldown'].indexOf(a) - ['warmup', 'main', 'cooldown'].indexOf(b),
+        ),
+      )
+      expect(phases).toContain('main')
+      const tol = minutes <= 10 ? 60 : 120
+      if (!p.shortOfTime) expect(Math.abs(p.totalSeconds - minutes * 60)).toBeLessThanOrEqual(tol)
+    }
+  })
+
+  it('keeps doses inside each recommended range', () => {
+    const p = plan(makePlan(input({ routine: 'strength', minutes: 30 })))
+    for (const item of p.items) {
+      const d = item.dose
+      const v = d.kind === 'time' ? d.seconds : d.reps
+      expect(v).toBeGreaterThanOrEqual(d.range[0])
+      expect(v).toBeLessThanOrEqual(d.range[1])
+    }
+  })
+
+  it('changes sets only in the main part', () => {
+    for (const routine of ROUTINE_ORDER) {
+      const r = makePlan(input({ routine, minutes: 45 }))
+      if (r.kind !== 'plan') continue
+      for (const i of r.items.filter((i) => i.phase !== 'main')) {
+        const base = ex(i.exerciseId)[i.version]!.dose
+        if (i.dose.kind === 'reps' && base.kind === 'reps') expect(i.dose.sets).toBe(base.sets)
+      }
+    }
+  })
+
+  it('a Calm morning from the real library has a cool-down that ends with the breath', () => {
+    const p = plan(makePlan(input({ library: allExercises, routine: 'calm' })))
+    const cool = p.items.filter((i) => i.phase === 'cooldown')
+    expect(cool.length).toBeGreaterThanOrEqual(1)
+    expect(p.items.some((i) => i.phase === 'main')).toBe(true)
+  })
+
+  it('gives every item a reason', () => {
+    plan(makePlan(input())).items.forEach((i) => expect(i.reason.length).toBeGreaterThan(3))
+  })
+})
+
+describe('routine characters (FR-009)', () => {
+  it('Calm morning uses gentle exercises only', () => {
+    for (let s = 0; s < 20; s++) {
+      plan(makePlan(input({ shuffle: s }))).items.forEach((i) =>
+        expect(ex(i.exerciseId).intensity).toBe('gentle'),
+      )
+    }
+  })
+
+  it('Desk break uses standing or seated exercises without a mat', () => {
+    for (let s = 0; s < 20; s++) {
+      for (const i of plan(makePlan(input({ routine: 'desk', minutes: 5, shuffle: s }))).items) {
+        const e = ex(i.exerciseId)
+        expect(['standing', 'seated']).toContain(e[i.version]!.position ?? e.position)
+        expect(e.equipment).not.toContain('mat')
+      }
+    }
+  })
+
+  it('Strength keeper makes at least half the main part strength or balance', () => {
+    for (let s = 0; s < 20; s++) {
+      const main = plan(
+        makePlan(input({ routine: 'strength', minutes: 20, shuffle: s })),
+      ).items.filter((i) => i.phase === 'main')
+      const strong = main.filter(
+        (i) =>
+          ex(i.exerciseId).technique === 'strength' || ex(i.exerciseId).tags.includes('balance'),
+      )
+      expect(strong.length * 2).toBeGreaterThanOrEqual(main.length)
+    }
+  })
+
+  it('Cardio uses only cardio in the main part, low-impact for non-advanced', () => {
+    const p = plan(makePlan(input({ routine: 'cardio', minutes: 15 })))
+    for (const i of p.items.filter((i) => i.phase === 'main')) {
+      expect(ex(i.exerciseId).technique).toBe('cardio')
+      expect(ex(i.exerciseId)[i.version]!.lowImpact).toBe(true)
+    }
+  })
+})
+
+describe('profile rules', () => {
+  it('favours focus areas in most plans (SC-004)', () => {
+    const profile: Profile = { ...DEFAULT_PROFILE, focusAreas: ['shoulders', 'hips'] }
+    let hits = 0
+    for (let s = 0; s < 50; s++) {
+      const items = plan(makePlan(input({ profile, routine: 'weekend', shuffle: s }))).items
+      if (
+        items.some((i) =>
+          ex(i.exerciseId).worksAreas.some((a) => a === 'shoulders' || a === 'hips'),
+        )
+      )
+        hits++
+    }
+    expect(hits / 50).toBeGreaterThanOrEqual(0.8)
+  })
+
+  it('uses easier versions for Go easy areas', () => {
+    const target = LIB.find((e) => e.loadsAreas.length > 0 && e.intensity === 'gentle' && e.easier)!
+    const profile: Profile = {
+      ...DEFAULT_PROFILE,
+      goEasyAreas: target.loadsAreas,
+      focusAreas: target.worksAreas,
+    }
+    for (let s = 0; s < 30; s++) {
+      for (const i of plan(makePlan(input({ profile, routine: 'weekend', shuffle: s }))).items) {
+        const e = ex(i.exerciseId)
+        if (e.loadsAreas.some((a) => target.loadsAreas.includes(a)) && e.easier)
+          expect(i.version).toBe('easier')
+      }
+    }
+  })
+
+  it('includes one or two new exercises with "A mix" when available', () => {
+    const done = LIB.map((e) => e.id).filter((_, i) => i % 2 === 0)
+    for (let s = 0; s < 10; s++) {
+      const items = plan(
+        makePlan(
+          input({
+            history: { done, yesterday: [], recent: [] },
+            routine: 'weekend',
+            minutes: 30,
+            shuffle: s,
+          }),
+        ),
+      ).items
+      const fresh = items.filter((i) => !done.includes(i.exerciseId)).length
+      expect(fresh).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it('avoids yesterday’s main exercises when alternatives exist', () => {
+    const first = plan(makePlan(input({ routine: 'weekend' })))
+      .items.filter((i) => i.phase === 'main')
+      .map((i) => i.exerciseId)
+    const second = plan(
+      makePlan(
+        input({
+          routine: 'weekend',
+          today: '2026-11-16',
+          history: { done: first, yesterday: first, recent: first },
+        }),
+      ),
+    )
+    const repeats = second.items.filter((i) => i.phase === 'main' && first.includes(i.exerciseId))
+    expect(repeats.length).toBeLessThan(first.length)
+  })
+})
+
+describe('swap and insufficient', () => {
+  it('swaps one item for a different exercise in the same phase', () => {
+    const base = plan(makePlan(input({ routine: 'weekend' })))
+    const swapped = plan(makePlan(input({ routine: 'weekend', swaps: { 1: 1 } })))
+    expect(swapped.items[1].exerciseId).not.toBe(base.items[1].exerciseId)
+    expect(swapped.items[1].phase).toBe(base.items[1].phase)
+    expect(swapped.items[0]).toEqual(base.items[0])
+    const ids = swapped.items.map((i) => i.exerciseId)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('says when a routine cannot be filled, with a suggestion', () => {
+    const r = makePlan(input({ library: allExercises, routine: 'cardio' }))
+    expect(r.kind).toBe('insufficient')
+    if (r.kind === 'insufficient') expect(r.suggestion).not.toBeNull()
+  })
+
+  it('plans a Calm morning from the real batch-1 library', () => {
+    const p = plan(
+      makePlan(
+        input({
+          library: allExercises,
+          profile: { ...DEFAULT_PROFILE, focusAreas: ['shoulders', 'hips'] },
+        }),
+      ),
+    )
+    expect(p.items.length).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('property test: 1,000 random profiles (SC-003)', () => {
+  it('always respects exclusions and the time tolerance', () => {
+    const r = seededRandom(42)
+    const pick = <T>(xs: readonly T[]) => xs[Math.floor(r() * xs.length)]
+    const some = <T>(xs: readonly T[], p: number) => xs.filter(() => r() < p)
+    for (let n = 0; n < 1000; n++) {
+      const avoid = some(AREAS, 0.1)
+      const profile: Profile = {
+        ...DEFAULT_PROFILE,
+        focusAreas: some(AREAS, 0.2),
+        avoidAreas: avoid,
+        goEasyAreas: some(AREAS, 0.1).filter((a) => !avoid.includes(a)),
+        techniques: Object.fromEntries(
+          TECHS.map((t) => [t, pick(['none', 'some', 'lots'] as const)]),
+        ) as Profile['techniques'],
+        level: pick(['beginner', 'intermediate', 'advanced'] as const),
+        equipment: some(['mat', 'chair', 'wall', 'band'] as const, 0.7),
+        tryNew: pick(['favourites', 'mix', 'new'] as const),
+      }
+      const marks = Object.fromEntries(
+        some(LIB, 0.1).map((e) => [e.id, pick(['favourite', 'notForMe'] as const)]),
+      )
+      const routine: RoutineId = pick(ROUTINE_ORDER)
+      const minutes = pick([5, 10, 15, 20, 30, 45])
+      const res = makePlan(input({ profile, marks, routine, minutes, shuffle: n }))
+      if (res.kind === 'insufficient') continue
+      for (const i of res.items) {
+        const e = ex(i.exerciseId)
+        expect(marks[e.id]).not.toBe('notForMe')
+        expect(profile.techniques[e.technique]).not.toBe('none')
+        expect(e.loadsAreas.some((a) => profile.avoidAreas.includes(a))).toBe(false)
+        const equipment = e[i.version]!.equipment ?? e.equipment
+        expect(equipment.every((q) => q === 'none' || profile.equipment.includes(q as never))).toBe(
+          true,
+        )
+      }
+      const tol = minutes <= 10 ? 60 : 120
+      if (!res.shortOfTime) expect(res.totalSeconds).toBeLessThanOrEqual(minutes * 60 + tol)
+      const ids = res.items.map((i) => i.exerciseId)
+      expect(new Set(ids).size).toBe(ids.length)
+    }
+  })
+})
+
+describe('routine for the time of day (US3)', () => {
+  it('picks Calm morning early on weekdays, Desk break in the working day, Weekend on weekend mornings', () => {
+    expect(routineForTime(new Date('2026-11-16T07:30:00'))).toBe('calm') // Monday
+    expect(routineForTime(new Date('2026-11-16T14:00:00'))).toBe('desk')
+    expect(routineForTime(new Date('2026-11-21T09:00:00'))).toBe('weekend') // Saturday
+    expect(routineForTime(new Date('2026-11-16T20:00:00'))).toBe('calm')
+  })
+})

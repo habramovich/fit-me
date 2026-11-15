@@ -1,6 +1,7 @@
 import { doc, onSnapshot, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore'
 import { db } from '../../firebase'
 import type { SessionUser } from '../../auth/session'
+import { PROFILE_SCHEMA_VERSION, type Profile } from '../../profile/types'
 
 export const USER_SCHEMA_VERSION = 1
 
@@ -10,6 +11,20 @@ export interface UserRecord {
   displayName: string | null
   email: string
   lastSignInAt: Date | null
+  /** Stored profile (may be partial or missing); use withDefaults() to read it. */
+  profile: Partial<Profile> | null
+}
+
+/**
+ * Saves some profile fields. A merge write, so nested maps (techniques, routineMinutes) merge
+ * field by field and phone and tablet edits don't overwrite each other. Not awaited by callers.
+ */
+export function saveProfile(uid: string, patch: Partial<Profile>): Promise<void> {
+  return setDoc(
+    doc(db, 'users', uid),
+    { profile: { ...patch, schemaVersion: PROFILE_SCHEMA_VERSION } },
+    { merge: true },
+  )
 }
 
 /**
@@ -50,6 +65,7 @@ export function watchUser(
         displayName: (data.displayName as string | null | undefined) ?? null,
         email: data.email as string,
         lastSignInAt: ts ? ts.toDate() : null,
+        profile: (data.profile as Partial<Profile> | undefined) ?? null,
       })
     },
     onError,

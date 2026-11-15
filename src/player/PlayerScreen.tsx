@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMarks } from '../app/marksContext'
-import { formatRange, getExercise } from '../exercises'
+import type { PlanParams } from '../app/router'
+import { allExercises, formatRange, getExercise } from '../exercises'
+import { todayKey } from '../planner/history'
+import { EMPTY_HISTORY, makePlan, type HistorySummary } from '../planner/plan'
+import { takeHandedOffPlan } from '../planner/usePlan'
+import type { Profile } from '../profile/types'
+import type { PlayItem } from './machine'
 import { estimateMinutes, sampleRoutine, singleRoutine } from '../exercises/sample'
 import type { Phase, VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
@@ -20,21 +26,47 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2,
 export function PlayerScreen({
   routine,
   version,
+  plan,
+  profile,
+  history,
   uid,
 }: {
   routine: string
   version?: string
+  plan?: PlanParams
+  profile: Profile
+  history: HistorySummary | null
   uid: string
 }) {
   const { marks } = useMarks()
-  // The routine is fixed when the player opens; later mark changes don't reshuffle it.
-  const items = useMemo(() => {
+  // The routine is fixed when the player opens; later changes (marks, history) don't reshuffle it.
+  const [items] = useState<PlayItem[]>(() => {
     if (routine.startsWith('single:'))
       return singleRoutine(routine.slice(7), (version as VersionKey) ?? 'standard')
+    if (routine === 'plan' && plan) {
+      // The plan screen hands over the exact plan; after a reload, recompute from the params.
+      const result =
+        takeHandedOffPlan(plan) ??
+        makePlan({
+          library: allExercises,
+          profile,
+          routine: plan.routine,
+          minutes: plan.minutes,
+          marks,
+          history: history ?? EMPTY_HISTORY,
+          today: todayKey(),
+          shuffle: plan.shuffle,
+          swaps: plan.swaps,
+        })
+      return result.kind === 'plan'
+        ? result.items.map((i) => ({ exerciseId: i.exerciseId, version: i.version, dose: i.dose }))
+        : []
+    }
     return sampleRoutine(marks)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  })
+  const sessionRoutine = routine === 'plan' && plan ? `plan:${plan.routine}` : routine
 
-  const { state, dispatch, wakeLock } = usePlayer(items, routine, uid)
+  const { state, dispatch, wakeLock } = usePlayer(items, sessionRoutine, uid)
 
   if (items.length === 0) {
     return (
@@ -114,7 +146,7 @@ export function PlayerScreen({
           </div>
           <span className="muted small">
             {state.index + 1} of {state.items.length} · {PHASE_LABEL[exercise.phases[0]]}
-            {routine === 'sample' && ` · about ${estimateMinutes(state.items)} min`}
+            {state.items.length > 1 && ` · about ${estimateMinutes(state.items)} min`}
           </span>
         </div>
       </div>

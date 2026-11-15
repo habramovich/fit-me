@@ -2,9 +2,12 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarksProvider } from '../app/marks'
+import { EMPTY_HISTORY } from '../planner/plan'
+import { DEFAULT_PROFILE } from '../profile/types'
 import { PlayerScreen } from './PlayerScreen'
 
 const sessions = vi.hoisted(() => ({
+  recentSessions: async () => [],
   startSession: vi.fn(() => 's1'),
   recordItems: vi.fn(),
   finishSession: vi.fn(),
@@ -15,7 +18,13 @@ vi.mock('../data/repo/marks', () => ({ watchMarks: () => () => {}, setMark: vi.f
 function renderPlayer(routine: string, version?: string) {
   render(
     <MarksProvider uid="u1">
-      <PlayerScreen routine={routine} version={version} uid="u1" />
+      <PlayerScreen
+        routine={routine}
+        version={version}
+        uid="u1"
+        profile={DEFAULT_PROFILE}
+        history={EMPTY_HISTORY}
+      />
     </MarksProvider>,
   )
 }

@@ -53,6 +53,9 @@ export const figureFour: Exercise = {
   equipment: ['mat'],
   level: 'beginner',
   phases: ['cooldown'],
+  position: 'lying',
+  intensity: 'gentle',
+  tags: [],
   batch: 1,
   standard: {
     dose: { kind: 'time', seconds: 30, range: [20, 45], perSide: true },

@@ -230,6 +230,18 @@ describe('sessions (002 rows 23–27)', () => {
   })
 })
 
+describe('profile (003 rows 29–30)', () => {
+  it('29. A can save a profile map on own record; B cannot', async () => {
+    const profile = { schemaVersion: 1, goals: ['mobility'], techniques: { yoga: 'lots' } }
+    await assertSucceeds(setDoc(doc(as(A), 'users', A.uid), { profile }, { merge: true }))
+    await assertFails(setDoc(doc(as(B), 'users', A.uid), { profile }, { merge: true }))
+  })
+
+  it('30. the profile must be a map', async () => {
+    await assertFails(setDoc(doc(as(A), 'users', A.uid), { profile: 'mobility' }, { merge: true }))
+  })
+})
+
 describe('everything else', () => {
   it('16. any other collection is denied', async () => {
     const db = as(A)

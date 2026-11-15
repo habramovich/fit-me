@@ -31,7 +31,10 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow get, create, update: if isInvited() && isOwner(uid);
+      // The profile (003) is a map when present.
+      allow get: if isInvited() && isOwner(uid);
+      allow create, update: if isInvited() && isOwner(uid)
+        && (!('profile' in request.resource.data) || request.resource.data.profile is map);
 
       // Favourite / Not for me per exercise. Clearing a mark deletes the document.
       match /exerciseMarks/{exerciseId} {

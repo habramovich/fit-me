@@ -51,6 +51,9 @@ export const hipCircles: Exercise = {
   equipment: ['none'],
   level: 'beginner',
   phases: ['warmup'],
+  position: 'standing',
+  intensity: 'gentle',
+  tags: [],
   batch: 1,
   standard: {
     dose: {

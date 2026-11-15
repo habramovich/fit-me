@@ -96,6 +96,9 @@ describe('exercise library', () => {
       expect(e.equipment.length).toBeGreaterThan(0)
       expect(e.phases.length).toBeGreaterThan(0)
       expect(e.batch).toBeGreaterThanOrEqual(1)
+      expect(['standing', 'seated', 'kneeling', 'lying']).toContain(e.position)
+      expect(['gentle', 'moderate', 'vigorous']).toContain(e.intensity)
+      expect(Array.isArray(e.tags)).toBe(true)
     })
 
     it('has valid versions', () => {

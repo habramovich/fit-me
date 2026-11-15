@@ -65,6 +65,9 @@ export const catCow: Exercise = {
   equipment: ['mat'],
   level: 'beginner',
   phases: ['warmup', 'cooldown'],
+  position: 'kneeling',
+  intensity: 'gentle',
+  tags: ['breathing'],
   batch: 1,
   standard: {
     dose: { kind: 'reps', reps: 8, range: [6, 10], sets: 1, perSide: false },
@@ -88,6 +91,8 @@ export const catCow: Exercise = {
     cues: ['Seated, hands on knees', 'Breathe in: chest lifts', 'Breathe out: round'],
     breathing: 'Breathe in as your chest lifts, out as you round.',
     figure: seated,
+    position: 'seated',
+    equipment: ['chair'],
     secondsPerRep: 6,
   },
   harder: {
