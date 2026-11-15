@@ -2,8 +2,6 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarksProvider } from '../app/marks'
-import { EMPTY_HISTORY } from '../planner/plan'
-import { DEFAULT_PROFILE } from '../profile/types'
 import { PlayerScreen } from './PlayerScreen'
 
 const sessions = vi.hoisted(() => ({
@@ -13,18 +11,16 @@ const sessions = vi.hoisted(() => ({
   finishSession: vi.fn(),
 }))
 vi.mock('../data/repo/sessions', () => sessions)
-vi.mock('../data/repo/marks', () => ({ watchMarks: () => () => {}, setMark: vi.fn() }))
+const marksRepo = vi.hoisted(() => ({
+  watchMarks: () => () => {},
+  setMark: vi.fn(async () => {}),
+}))
+vi.mock('../data/repo/marks', () => marksRepo)
 
 function renderPlayer(routine: string, version?: string) {
   render(
     <MarksProvider uid="u1">
-      <PlayerScreen
-        routine={routine}
-        version={version}
-        uid="u1"
-        profile={DEFAULT_PROFILE}
-        history={EMPTY_HISTORY}
-      />
+      <PlayerScreen routine={routine} version={version} uid="u1" />
     </MarksProvider>,
   )
 }
@@ -50,15 +46,41 @@ describe('PlayerScreen', () => {
     expect(screen.getByText(/set 2 of 2/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.getByRole('dialog', { name: 'How was Glute bridge?' })).toBeInTheDocument()
+    expect(screen.queryByText(/More next time|Easier next time|Keep it/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Just right/ }))
     expect(screen.getByRole('heading', { name: 'Session done' })).toBeInTheDocument()
     expect(screen.getByText(/1 done · 0 skipped · 1 rated/)).toBeInTheDocument()
+    expect(screen.getByText(/you’ll see them in Progress/)).toBeInTheDocument()
+    expect(screen.queryByText(/planner arrives/)).not.toBeInTheDocument()
     expect(sessions.finishSession).toHaveBeenCalledWith(
       'u1',
       's1',
       [{ exerciseId: 'glute-bridge', version: 'standard', outcome: 'done', rating: 'right' }],
       0,
     )
+  })
+
+  it('Skip next time marks the exercise Not for me and moves on (006 US3)', async () => {
+    const user = userEvent.setup()
+    renderPlayer('single:glute-bridge')
+    await user.click(screen.getByRole('button', { name: 'Set done' }))
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: /Skip next time/ }))
+    expect(marksRepo.setMark).toHaveBeenCalledWith('u1', 'glute-bridge', 'notForMe')
+    expect(screen.getByRole('heading', { name: 'Session done' })).toBeInTheDocument()
+    expect(screen.getByText(/1 done · 0 skipped · 0 rated/)).toBeInTheDocument()
+    expect(screen.getByText(/Glute bridge won’t be suggested again/)).toBeInTheDocument()
+    expect(sessions.finishSession).toHaveBeenCalledWith(
+      'u1',
+      's1',
+      [{ exerciseId: 'glute-bridge', version: 'standard', outcome: 'done', rating: null }],
+      0,
+    )
+  })
+
+  it('shows the pace next to the figure (006 US2)', () => {
+    renderPlayer('single:figure-four')
+    expect(screen.getByLabelText('Pace: Hold')).toBeInTheDocument()
   })
 
   it('counts down a timed hold and pauses', async () => {

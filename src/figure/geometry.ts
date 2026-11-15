@@ -1,6 +1,6 @@
 // Pure figure maths: timing, pose interpolation, arrows and limb segments.
 // See specs/002-exercise-library-player/research.md (R3).
-import type { Arrow, Breath, FigureSpec, Limbs, Point, Pose, Ring } from '../exercises/types'
+import type { Arrow, Breath, FigureSpec, Limbs, Pace, Point, Pose, Ring } from '../exercises/types'
 
 export interface Timing {
   /** Seconds holding each key pose before moving on. */
@@ -23,6 +23,8 @@ export interface Phase {
   k: number
   /** False while holding the starting pose of the transition. */
   moving: boolean
+  /** A hold has reached its pose and stays there (spec 006 US2). */
+  held?: boolean
 }
 
 /** Where in the loop we are after `elapsed` seconds, for a figure with `count` keyframes. */
@@ -33,6 +35,39 @@ export function phaseAt(elapsed: number, count: number, timing: Timing = DEFAULT
   const within = t - transition * step
   if (within < timing.hold) return { transition, k: 0, moving: false }
   return { transition, k: smoothstep((within - timing.hold) / timing.move), moving: true }
+}
+
+/**
+ * Timing for an exercise's pace (spec 006 research R6). Slow: one cycle per repetition, a quarter
+ * of each step pausing in the pose. Flowing: no pauses. Brisk: half a second per step. Hold: the
+ * way into the pose, at an easy speed.
+ */
+export function timingFor(pace: Pace, count: number, secondsPerRep?: number): Timing {
+  switch (pace) {
+    case 'slow': {
+      const step = (secondsPerRep ?? 4) / count
+      return { hold: step * 0.25, move: step * 0.75 }
+    }
+    case 'flowing':
+      return { hold: 0, move: secondsPerRep ? secondsPerRep / count : 2.5 }
+    case 'brisk':
+      return { hold: 0, move: 0.5 }
+    case 'hold':
+      return { hold: 0.5, move: 1.5 }
+  }
+}
+
+/** Seconds a hold takes to reach its pose. */
+export function holdEntrySeconds(holdAt: number, timing: Timing): number {
+  return holdAt * (timing.hold + timing.move)
+}
+
+/** A hold plays the moves into pose `holdAt` once, then stays on it. */
+export function holdPhaseAt(elapsed: number, count: number, holdAt: number, timing: Timing): Phase {
+  if (elapsed >= holdEntrySeconds(holdAt, timing)) {
+    return { transition: holdAt % count, k: 0, moving: false, held: true }
+  }
+  return phaseAt(elapsed, count, timing)
 }
 
 const lerp = (a: Point, b: Point, k: number): Point => [

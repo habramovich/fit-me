@@ -1,5 +1,6 @@
 // Drives the player machine: wall-clock ticks, pause when hidden, session saving, wake lock.
 import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { markPlanUsed } from '../data/repo/plans'
 import { finishSession, recordItems, startSession, type SessionItem } from '../data/repo/sessions'
 import { initPlayer, playerReducer, type PlayItem, type PlayerState } from './machine'
 import { useWakeLock, type WakeLockStatus } from './wakeLock'
@@ -25,7 +26,13 @@ function toSessionItems(items: PlayItem[], outcomes: PlayerState['outcomes']): S
   return out
 }
 
-export function usePlayer(items: PlayItem[], routine: string, uid: string | null): UsePlayer {
+export function usePlayer(
+  items: PlayItem[],
+  routine: string,
+  uid: string | null,
+  /** A kept plan being played: marked used on the first exercise done (spec 006 FR-004). */
+  planId?: string,
+): UsePlayer {
   const [state, dispatch] = useReducer(playerReducer, items, initPlayer)
   const sessionId = useRef<string | null>(null)
   // Latest active seconds, read when saving (ticks alone never cause a write).
@@ -74,6 +81,14 @@ export function usePlayer(items: PlayItem[], routine: string, uid: string | null
     else if (sessionItems.length > 0)
       recordItems(uid, sessionId.current, sessionItems, elapsed.current)
   }, [uid, finished, sessionItems])
+
+  const planUsed = useRef(false)
+  useEffect(() => {
+    if (!uid || !planId || planUsed.current || sessionId.current === null) return
+    if (!sessionItems.some((i) => i.outcome === 'done')) return
+    planUsed.current = true
+    markPlanUsed(uid, planId, sessionId.current)
+  }, [uid, planId, sessionItems])
 
   return { state, dispatch, wakeLock }
 }

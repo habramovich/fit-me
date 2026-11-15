@@ -1,11 +1,38 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarksProvider } from '../app/marks'
-import { EMPTY_HISTORY } from '../planner/plan'
+import { PlansProvider } from '../app/plans'
+import type { KeptPlan } from '../data/repo/plans'
+import type { Marks } from '../data/repo/marks'
+import { EMPTY_HISTORY, type KeptItem } from '../planner/plan'
 import { DEFAULT_PROFILE } from '../profile/types'
 import { PlanView } from './PlanView'
 
-vi.mock('../data/repo/marks', () => ({ watchMarks: () => () => {}, setMark: vi.fn() }))
+const state = vi.hoisted(() => ({
+  marks: {} as Marks,
+  plans: [] as KeptPlan[],
+}))
+vi.mock('../data/repo/marks', () => ({
+  watchMarks: (_uid: string, onData: (m: Marks) => void) => {
+    onData(state.marks)
+    return () => {}
+  },
+  setMark: vi.fn(),
+}))
+const repo = vi.hoisted(() => ({
+  watchPlans: (_uid: string, onData: (p: KeptPlan[]) => void) => {
+    onData(state.plans)
+    return () => {}
+  },
+  getPlan: vi.fn(async () => null),
+  savePlan: vi.fn(),
+  updatePlanItems: vi.fn(),
+  markPlanViewed: vi.fn(),
+  markPlanUsed: vi.fn(),
+  planId: (routine: string, minutes: number) => `${routine}-${minutes}`,
+}))
+vi.mock('../data/repo/plans', () => repo)
 
 const profile = {
   ...DEFAULT_PROFILE,
@@ -15,36 +42,131 @@ const profile = {
 
 function renderPlan(
   routine: 'calm' | 'cardio',
-  history = EMPTY_HISTORY,
+  history: typeof EMPTY_HISTORY | null = EMPTY_HISTORY,
   over: Partial<typeof profile> = {},
 ) {
   render(
     <MarksProvider uid="u1">
-      <PlanView
-        params={{ routine, minutes: 15, shuffle: 0, swaps: {} }}
-        profile={{ ...profile, ...over }}
-        history={history}
-      />
+      <PlansProvider uid="u1">
+        <PlanView
+          params={{ routine, minutes: 15 }}
+          profile={{ ...profile, ...over }}
+          history={history}
+        />
+      </PlansProvider>
     </MarksProvider>,
   )
 }
 
+const item = (exerciseId: string, phase: KeptItem['phase']): KeptItem => ({
+  exerciseId,
+  version: 'standard',
+  dose: { kind: 'reps', reps: 8, range: [5, 12], sets: 1, perSide: false },
+  phase,
+  reason: 'Kept for you',
+  seconds: 60,
+  passed: [],
+})
+
+const keptCalm = (): KeptPlan => ({
+  id: 'calm-15',
+  routine: 'calm',
+  minutes: 15,
+  generation: 2,
+  items: [
+    item('cat-cow', 'warmup'),
+    item('glute-bridge', 'main'),
+    item('pelvic-tilts', 'cooldown'),
+  ],
+  notes: [],
+  shortOfTime: false,
+  plannedAt: new Date(Date.now() - 2 * 86_400_000),
+  viewedAt: new Date(Date.now() - 2 * 86_400_000),
+  usedAt: null,
+  sessionId: null,
+})
+
+const names = () =>
+  within(screen.getByRole('list'))
+    .getAllByRole('listitem')
+    .map((li) => within(li).getByRole('link').getAttribute('aria-label'))
+
+afterEach(() => {
+  state.marks = {}
+  state.plans = []
+  vi.clearAllMocks()
+})
+
 describe('PlanView', () => {
-  it('shows a calm morning plan with reasons, swap links and Start', () => {
+  it('makes and keeps a new plan, with reasons, Swap buttons and Start', async () => {
     renderPlan('calm')
-    expect(screen.getByRole('heading', { name: /-minute session/ })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /-minute session/ })).toBeInTheDocument()
+    expect(repo.getPlan).toHaveBeenCalledWith('u1', 'calm-15')
+    expect(repo.savePlan).toHaveBeenCalledTimes(1)
+    expect(repo.savePlan.mock.calls[0][1]).toMatchObject({ id: 'calm-15', generation: 0 })
     const items = within(screen.getByRole('list')).getAllByRole('listitem')
     expect(items.length).toBeGreaterThanOrEqual(3)
-    expect(screen.getAllByRole('link', { name: /^Swap / })[0].getAttribute('href')).toContain(
-      'w=0.1',
+    expect(screen.getAllByRole('button', { name: /^Swap / }).length).toBe(items.length)
+    expect(screen.getByRole('link', { name: /Start/ }).getAttribute('href')).toMatch(
+      /routine=plan.*/,
     )
-    expect(screen.getByRole('link', { name: /Start/ }).getAttribute('href')).toMatch(/routine=plan/)
     expect(
       screen.getAllByText(/Focus: |Favourite|New for you|Calm|Variety|which you like/).length,
     ).toBeGreaterThan(0)
   })
 
-  it('says when the library cannot fill a routine yet', () => {
+  it('shows a kept plan exactly as it was, with the day it was planned', async () => {
+    state.plans = [keptCalm()]
+    renderPlan('calm')
+    await screen.findByRole('heading', { name: /-minute session/ })
+    expect(names()).toEqual(['About Cat–cow', 'About Glute bridge', 'About Pelvic tilts'])
+    expect(screen.getByText(/^Planned /)).toBeInTheDocument()
+    expect(repo.savePlan).not.toHaveBeenCalled()
+    expect(repo.updatePlanItems).not.toHaveBeenCalled()
+    expect(repo.markPlanViewed).toHaveBeenCalledWith('u1', 'calm-15')
+  })
+
+  it('Swap changes only that item, and keeps the change', async () => {
+    state.plans = [keptCalm()]
+    renderPlan('calm')
+    await userEvent.click(await screen.findByRole('button', { name: 'Swap Glute bridge' }))
+    expect(repo.updatePlanItems).toHaveBeenCalledTimes(1)
+    const [, id, items, notes] = repo.updatePlanItems.mock.calls[0]
+    expect(id).toBe('calm-15')
+    expect(items[1].exerciseId).not.toBe('glute-bridge')
+    expect(items[1].passed).toEqual(['glute-bridge'])
+    expect(items[0]).toEqual(keptCalm().items[0])
+    expect(items[2]).toEqual(keptCalm().items[2])
+    expect(notes).toEqual([])
+    expect(names()[1]).not.toBe('About Glute bridge')
+  })
+
+  it('Reshuffle keeps a new generation', async () => {
+    state.plans = [keptCalm()]
+    renderPlan('calm')
+    await userEvent.click(await screen.findByRole('button', { name: 'Reshuffle' }))
+    expect(repo.savePlan).toHaveBeenCalledTimes(1)
+    expect(repo.savePlan.mock.calls[0][1]).toMatchObject({ id: 'calm-15', generation: 3 })
+  })
+
+  it('replaces an item marked Not for me and says so', async () => {
+    state.plans = [keptCalm()]
+    state.marks = { 'glute-bridge': 'notForMe' }
+    renderPlan('calm')
+    expect(await screen.findByText(/Glute bridge is now Not for me/)).toBeInTheDocument()
+    expect(names()[0]).toBe('About Cat–cow')
+    expect(names()[1]).not.toBe('About Glute bridge')
+    expect(repo.updatePlanItems).toHaveBeenCalledTimes(1)
+  })
+
+  it('makes a new plan once the kept one has been used', async () => {
+    state.plans = [{ ...keptCalm(), usedAt: new Date() }]
+    renderPlan('calm')
+    await screen.findByRole('heading', { name: /-minute session/ })
+    expect(repo.savePlan.mock.calls[0][1]).toMatchObject({ generation: 3, usedAt: null })
+  })
+
+  it('says when the library cannot fill a routine yet', async () => {
     // With every technique but strength set to None, Cardio has nothing to plan.
     renderPlan('cardio', EMPTY_HISTORY, {
       techniques: {
@@ -55,20 +177,14 @@ describe('PlanView', () => {
         cardio: 'none',
       },
     })
-    expect(screen.getByText(/aren’t enough exercises/)).toBeInTheDocument()
+    expect(await screen.findByText(/aren’t enough exercises/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /instead/ })).toBeInTheDocument()
+    expect(repo.savePlan).not.toHaveBeenCalled()
   })
 
   it('waits for history before planning', () => {
-    render(
-      <MarksProvider uid="u1">
-        <PlanView
-          params={{ routine: 'calm', minutes: 15, shuffle: 0, swaps: {} }}
-          profile={profile}
-          history={null}
-        />
-      </MarksProvider>,
-    )
+    renderPlan('calm', null)
     expect(screen.getByText('Planning…')).toBeInTheDocument()
+    expect(repo.getPlan).not.toHaveBeenCalled()
   })
 })

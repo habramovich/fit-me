@@ -47,6 +47,7 @@ import {
   TECHNIQUE_LABEL,
   type Dose,
   type Exercise,
+  type Pace,
   type Version,
   type VersionKey,
 } from './types'
@@ -103,6 +104,23 @@ export function getExercise(id: string): Exercise | undefined {
 
 export function getVersion(exercise: Exercise, key: VersionKey): Version | undefined {
   return exercise[key]
+}
+
+/**
+ * How fast to move (spec 006 R5): the version's or exercise's own pace, else a default from the
+ * technique and dose. Timed cardio is brisk, timed tai chi flows, other timed moves are holds;
+ * tai chi and breath-led repetitions flow, other repetitions are slow and controlled.
+ */
+export function paceOf(e: Exercise, v: Version): Pace {
+  if (v.pace) return v.pace
+  if (e.pace) return e.pace
+  if (v.dose.kind === 'time') {
+    if (e.technique === 'cardio') return 'brisk'
+    if (e.technique === 'taichi') return 'flowing'
+    return 'hold'
+  }
+  if (e.technique === 'taichi' || e.tags.includes('breathing')) return 'flowing'
+  return 'slow'
 }
 
 /** Matches name, technique or body areas worked, case-insensitively. Empty query matches all. */

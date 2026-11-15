@@ -127,6 +127,18 @@ describe('player machine', () => {
     expect(summary(s)).toEqual({ done: 2, skipped: 1, rated: 2, total: 3, minutes: 1 })
   })
 
+  it('records Skip next time as done without a rating (006 US3)', () => {
+    const s = run(
+      initPlayer(items),
+      { type: 'setDone' },
+      { type: 'setDone' },
+      { type: 'rate', rating: null },
+    )
+    expect(s.outcomes[0]).toEqual({ outcome: 'done', rating: null })
+    expect(s.index).toBe(1)
+    expect(summary(s)).toMatchObject({ done: 1, rated: 0 })
+  })
+
   it('counts active seconds only, not paused time', () => {
     const s = run(
       initPlayer(items),

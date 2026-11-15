@@ -3,12 +3,10 @@ import { useEffect, useState } from 'react'
 import type { Phase } from '../exercises/types'
 import type { RoutineId } from '../profile/types'
 
+/** A plan is identified by routine and length; its content is kept (spec 006). */
 export interface PlanParams {
   routine: RoutineId
   minutes: number
-  shuffle: number
-  /** Item index → times swapped. */
-  swaps: Record<number, number>
 }
 
 export type Route =
@@ -27,29 +25,17 @@ export type Route =
 const PHASES: Phase[] = ['warmup', 'main', 'cooldown']
 const ROUTINE_IDS: RoutineId[] = ['calm', 'desk', 'strength', 'weekend', 'cardio']
 
+// Links from before 006 may still carry `s` (shuffle) and `w` (swaps); they are ignored.
 function parsePlan(params: URLSearchParams): PlanParams {
   const r = params.get('r') as RoutineId | null
-  const swaps: Record<number, number> = {}
-  for (const pair of (params.get('w') ?? '').split(',').filter(Boolean)) {
-    const [i, n] = pair.split('.').map(Number)
-    if (Number.isInteger(i) && Number.isInteger(n) && n > 0) swaps[i] = n
-  }
   return {
     routine: r && ROUTINE_IDS.includes(r) ? r : 'calm',
     minutes: Math.min(90, Math.max(5, Number(params.get('m')) || 15)),
-    shuffle: Math.max(0, Number(params.get('s')) || 0),
-    swaps,
   }
 }
 
 function planQuery(p: PlanParams): URLSearchParams {
-  const q = new URLSearchParams({ r: p.routine, m: String(p.minutes), s: String(p.shuffle) })
-  const w = Object.entries(p.swaps)
-    .filter(([, n]) => n > 0)
-    .map(([i, n]) => `${i}.${n}`)
-    .join(',')
-  if (w) q.set('w', w)
-  return q
+  return new URLSearchParams({ r: p.routine, m: String(p.minutes) })
 }
 
 export function parseRoute(hash: string): Route {

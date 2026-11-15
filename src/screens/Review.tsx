@@ -1,8 +1,8 @@
 // Batch review (research R4): every exercise and version animating side by side, for the owner to
 // approve. Shown in development and on Firebase Hosting preview channels only.
 import { useState } from 'react'
-import { allExercises, formatDose, formatRange } from '../exercises'
-import { TECHNIQUE_LABEL, type VersionKey } from '../exercises/types'
+import { allExercises, formatDose, formatRange, paceOf } from '../exercises'
+import { PACE_LABEL, TECHNIQUE_LABEL, type VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
 
 export function Review() {
@@ -43,7 +43,13 @@ export function Review() {
               return (
                 <div key={k} className="stack-sm">
                   <h3 className="small">{k[0].toUpperCase() + k.slice(1)}</h3>
-                  <Figure spec={v.figure} breathing={v.breathing} />
+                  <Figure
+                    spec={v.figure}
+                    breathing={v.breathing}
+                    pace={paceOf(e, v)}
+                    secondsPerRep={v.secondsPerRep}
+                  />
+                  <p className="small">Pace: {PACE_LABEL[paceOf(e, v)]}</p>
                   <p>
                     <strong>{formatDose(v.dose)}</strong>{' '}
                     <span className="muted">· {formatRange(v.dose)}</span>

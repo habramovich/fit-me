@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMarks } from '../app/marksContext'
 import type { PlanParams } from '../app/router'
-import { allExercises, formatRange, getExercise } from '../exercises'
-import { todayKey } from '../planner/history'
-import { EMPTY_HISTORY, makePlan, type HistorySummary } from '../planner/plan'
-import { takeHandedOffPlan } from '../planner/usePlan'
-import type { Profile } from '../profile/types'
+import { formatRange, getExercise, paceOf } from '../exercises'
 import type { PlayItem } from './machine'
 import { estimateMinutes, sampleRoutine, singleRoutine } from '../exercises/sample'
 import type { Phase, VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
-import { TechniqueTag } from '../screens/parts'
+import { PaceTag, TechniqueTag } from '../screens/parts'
 import { summary } from './machine'
 import { usePlayer } from './usePlayer'
 import './player.css'
@@ -28,49 +24,36 @@ export function PlayerScreen({
   version,
   plan,
   setItems,
-  profile,
-  history,
+  planId,
   uid,
 }: {
   routine: string
   version?: string
   plan?: PlanParams
-  /** A saved set's items, for routine `set:<id>`. */
+  /** The items to play, for a saved set (`set:<id>`) or a kept plan (`plan`). */
   setItems?: PlayItem[]
-  profile: Profile
-  history: HistorySummary | null
+  /** The kept plan being played, marked used on the first exercise done (spec 006 FR-004). */
+  planId?: string
   uid: string
 }) {
-  const { marks } = useMarks()
-  // The routine is fixed when the player opens; later changes (marks, history) don't reshuffle it.
+  const { marks, setMark } = useMarks()
+  /** "… won't be suggested again", shown for a few seconds after Skip next time. */
+  const [notice, setNotice] = useState<string | null>(null)
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(null), 6000)
+    return () => clearTimeout(timer)
+  }, [notice])
+  // The routine is fixed when the player opens; later changes (marks, history) don't change it.
   const [items] = useState<PlayItem[]>(() => {
-    if (routine.startsWith('set:')) return setItems ?? []
+    if (routine.startsWith('set:') || routine === 'plan') return setItems ?? []
     if (routine.startsWith('single:'))
       return singleRoutine(routine.slice(7), (version as VersionKey) ?? 'standard')
-    if (routine === 'plan' && plan) {
-      // The plan screen hands over the exact plan; after a reload, recompute from the params.
-      const result =
-        takeHandedOffPlan(plan) ??
-        makePlan({
-          library: allExercises,
-          profile,
-          routine: plan.routine,
-          minutes: plan.minutes,
-          marks,
-          history: history ?? EMPTY_HISTORY,
-          today: todayKey(),
-          shuffle: plan.shuffle,
-          swaps: plan.swaps,
-        })
-      return result.kind === 'plan'
-        ? result.items.map((i) => ({ exerciseId: i.exerciseId, version: i.version, dose: i.dose }))
-        : []
-    }
     return sampleRoutine(marks)
   })
   const sessionRoutine = routine === 'plan' && plan ? `plan:${plan.routine}` : routine
 
-  const { state, dispatch, wakeLock } = usePlayer(items, sessionRoutine, uid)
+  const { state, dispatch, wakeLock } = usePlayer(items, sessionRoutine, uid, planId)
 
   if (items.length === 0) {
     return (
@@ -94,9 +77,8 @@ export function PlayerScreen({
         <p className="muted">
           {s.minutes} min · {s.done} done · {s.skipped} skipped · {s.rated} rated
         </p>
-        <p className="muted small">
-          Your ratings are saved. They’ll tune your sessions once the planner arrives.
-        </p>
+        {notice && <p className="small">{notice}</p>}
+        <p className="muted small">Ratings are saved; you’ll see them in Progress.</p>
         <a className="btn btn--primary btn--big" href="#/today">
           Done
         </a>
@@ -162,13 +144,18 @@ export function PlayerScreen({
             spec={v.figure}
             breathing={v.breathing}
             playing={!state.paused && state.phase === 'doing'}
+            pace={paceOf(exercise, v)}
+            secondsPerRep={v.secondsPerRep}
           />
         </div>
 
         <div className="player__info">
           <div className="player__title">
             <div className="stack-sm">
-              <TechniqueTag technique={exercise.technique} />
+              <div className="row-wrap">
+                <TechniqueTag technique={exercise.technique} />
+                <PaceTag pace={paceOf(exercise, v)} />
+              </div>
               <h1>{exercise.name}</h1>
             </div>
             <div className="player__count" aria-live="polite">
@@ -182,6 +169,14 @@ export function PlayerScreen({
               <li key={c}>{c}</li>
             ))}
           </ul>
+          {notice && (
+            <div className="card notice notice--row" role="status">
+              <span className="small">{notice}</span>
+              <button type="button" className="btn btn--link" onClick={() => setNotice(null)}>
+                OK
+              </button>
+            </div>
+          )}
           {state.paused && <p className="paused-note">Paused</p>}
           {(wakeLock === 'unsupported' || wakeLock === 'refused') && (
             <p className="muted small">
@@ -273,7 +268,6 @@ export function PlayerScreen({
             onClick={() => dispatch({ type: 'rate', rating: 'easy' })}
           >
             <strong>Too easy</strong>
-            <span className="muted">More next time</span>
           </button>
           <button
             type="button"
@@ -281,7 +275,6 @@ export function PlayerScreen({
             onClick={() => dispatch({ type: 'rate', rating: 'right' })}
           >
             <strong>Just right</strong>
-            <span>Keep it</span>
           </button>
           <button
             type="button"
@@ -289,7 +282,20 @@ export function PlayerScreen({
             onClick={() => dispatch({ type: 'rate', rating: 'hard' })}
           >
             <strong>Too hard</strong>
-            <span className="muted">Easier next time</span>
+          </button>
+          <button
+            type="button"
+            className="rate-btn rate-btn--skip"
+            onClick={() => {
+              setMark(exercise.id, 'notForMe')
+              setNotice(
+                `${exercise.name} won’t be suggested again. Undo from its page in the Library.`,
+              )
+              dispatch({ type: 'rate', rating: null })
+            }}
+          >
+            <strong>Skip next time</strong>
+            <span className="muted small">Not for me: won’t be suggested again</span>
           </button>
         </Sheet>
       )}
