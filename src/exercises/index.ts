@@ -31,6 +31,17 @@ import { partingWildHorsesMane } from './data/parting-wild-horses-mane'
 import { brushKneeAndPush } from './data/brush-knee-and-push'
 import { goldenRooster } from './data/golden-rooster'
 import { repulseMonkey } from './data/repulse-monkey'
+// Batch 4: yoga and strength
+import { downwardDog } from './data/downward-dog'
+import { warriorTwo } from './data/warrior-two'
+import { supineTwist } from './data/supine-twist'
+import { sphinxPose } from './data/sphinx'
+import { puppyPose } from './data/puppy-pose'
+import { splitSquat } from './data/split-squat'
+import { wallSit } from './data/wall-sit'
+import { sideLyingLegLifts } from './data/side-lying-leg-lifts'
+import { clamshells } from './data/clamshells'
+import { proneWRaises } from './data/prone-w-raises'
 import {
   BODY_AREA_LABEL,
   TECHNIQUE_LABEL,
@@ -72,6 +83,16 @@ export const allExercises: readonly Exercise[] = [
   brushKneeAndPush,
   goldenRooster,
   repulseMonkey,
+  downwardDog,
+  warriorTwo,
+  supineTwist,
+  sphinxPose,
+  puppyPose,
+  splitSquat,
+  wallSit,
+  sideLyingLegLifts,
+  clamshells,
+  proneWRaises,
 ]
 
 const byId = new Map(allExercises.map((e) => [e.id, e]))
