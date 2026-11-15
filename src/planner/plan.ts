@@ -348,9 +348,17 @@ export function makePlan(input: PlanInput): PlanResult {
 
   const spentIn = (phase: Phase) =>
     picked.filter((p) => p.phase === phase).reduce((sum, p) => sum + p.seconds, 0)
+  // The routine's pace caps how many exercises each part gets (fewer, longer ones for calmer
+  // routines); doses are then scaled up within their ranges to fill the time.
+  const maxItems = Math.max(3, Math.ceil(target / routine.pace))
+  const capFor = (phase: Phase) => Math.max(1, Math.round(maxItems * routine.shares[phase]))
+  const countIn = (phase: Phase) => picked.filter((p) => p.phase === phase).length
   const fill = (phase: Phase, borrow: boolean) => {
     st.firstOfPhase = picked.every((p) => p.phase !== phase)
-    while (spentIn(phase) < target * routine.shares[phase] * 0.85) {
+    while (
+      spentIn(phase) < target * routine.shares[phase] * 0.85 &&
+      countIn(phase) < capFor(phase)
+    ) {
       if (!pickOne(phase, borrow)) break
     }
   }
