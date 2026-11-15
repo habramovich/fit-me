@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { goBack, href } from '../app/router'
 import { saveProfile } from '../data/repo/users'
-import { getExercise, formatDose, formatRange } from '../exercises'
+import { getExercise, formatDose, formatRange, paceOf } from '../exercises'
 import { BODY_AREA_LABEL, type Phase, type VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
 import type { Profile } from '../profile/types'
 import { PHASE_ORDER } from '../sets/edit'
 import { AddToSet } from './AddToSet'
 import { ChipMulti } from './controls'
-import { ADVICE_NOTE, MarkButtons, TechniqueTag } from './parts'
+import { ADVICE_NOTE, MarkButtons, PaceTag, TechniqueTag } from './parts'
 
 const VERSION_LABEL: Record<VersionKey, string> = {
   easier: 'Easier',
@@ -76,12 +76,19 @@ export function ExerciseDetail({
       {back}
 
       <div className="card figure-card">
-        <Figure key={versionKey} spec={version.figure} breathing={version.breathing} />
+        <Figure
+          key={versionKey}
+          spec={version.figure}
+          breathing={version.breathing}
+          pace={paceOf(exercise, version)}
+          secondsPerRep={version.secondsPerRep}
+        />
       </div>
 
       <header className="stack-sm">
         <div className="row-wrap">
           <TechniqueTag technique={exercise.technique} />
+          <PaceTag pace={paceOf(exercise, version)} />
           <span className="tag tag--plain">{LEVEL_LABEL[exercise.level]}</span>
         </div>
         <h1>{exercise.name}</h1>

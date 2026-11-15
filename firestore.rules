@@ -55,6 +55,19 @@ service cloud.firestore {
           && request.resource.data.items.size() <= 40;
       }
 
+      // Kept plans (006): one per routine and length, id `{routine}-{minutes}`.
+      match /plans/{planId} {
+        allow read, delete: if isInvited() && isOwner(uid);
+        allow create, update: if isInvited() && isOwner(uid)
+          && request.resource.data.routine in ['calm', 'desk', 'strength', 'weekend', 'cardio']
+          && request.resource.data.minutes is number
+          && request.resource.data.minutes >= 5
+          && request.resource.data.minutes <= 90
+          && request.resource.data.items is list
+          && request.resource.data.items.size() >= 1
+          && request.resource.data.items.size() <= 40;
+      }
+
       // One document per player run. No deletes: history is kept.
       match /sessions/{sessionId} {
         allow read: if isInvited() && isOwner(uid);

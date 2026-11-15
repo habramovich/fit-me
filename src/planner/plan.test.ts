@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { allExercises } from '../exercises'
 import type { BodyArea, Exercise, Technique, Version } from '../exercises/types'
 import { DEFAULT_PROFILE, type Profile, type RoutineId } from '../profile/types'
-import { EMPTY_HISTORY, makePlan, type PlanInput, type PlanResult } from './plan'
+import {
+  EMPTY_HISTORY,
+  makePlan,
+  repairPlan,
+  swapItem,
+  type KeptItem,
+  type PlanInput,
+  type PlanResult,
+} from './plan'
 import { seededRandom } from './random'
 import { ROUTINE_ORDER, routineForTime } from './routines'
 
@@ -88,7 +96,7 @@ function input(over: Partial<PlanInput> = {}): PlanInput {
     marks: {},
     history: EMPTY_HISTORY,
     today: '2026-11-16',
-    shuffle: 0,
+    generation: 0,
     ...over,
   }
 }
@@ -98,6 +106,8 @@ const plan = (r: PlanResult) => {
   return r
 }
 const ex = (id: string) => LIB.find((e) => e.id === id)!
+const kept = (inp: PlanInput): KeptItem[] =>
+  plan(makePlan(inp)).items.map((i) => ({ ...i, passed: [] }))
 
 // ---------- Tests ----------
 
@@ -106,9 +116,9 @@ describe('planner basics', () => {
     expect(makePlan(input())).toEqual(makePlan(input()))
   })
 
-  it('reshuffling gives a different plan', () => {
-    const a = plan(makePlan(input({ shuffle: 0 }))).items.map((i) => i.exerciseId)
-    const b = plan(makePlan(input({ shuffle: 1 }))).items.map((i) => i.exerciseId)
+  it('a new generation gives a different plan', () => {
+    const a = plan(makePlan(input({ generation: 0 }))).items.map((i) => i.exerciseId)
+    const b = plan(makePlan(input({ generation: 1 }))).items.map((i) => i.exerciseId)
     expect(a).not.toEqual(b)
   })
 
@@ -166,7 +176,7 @@ describe('planner basics', () => {
   it('a Calm morning prefers yoga, tai chi and mobility over strength', () => {
     for (let s = 0; s < 10; s++) {
       const items = plan(
-        makePlan(input({ library: allExercises, routine: 'calm', shuffle: s })),
+        makePlan(input({ library: allExercises, routine: 'calm', generation: s })),
       ).items
       expect(
         items.filter(
@@ -184,7 +194,7 @@ describe('planner basics', () => {
 describe('routine characters (FR-009)', () => {
   it('Calm morning uses gentle exercises only', () => {
     for (let s = 0; s < 20; s++) {
-      plan(makePlan(input({ shuffle: s }))).items.forEach((i) =>
+      plan(makePlan(input({ generation: s }))).items.forEach((i) =>
         expect(ex(i.exerciseId).intensity).toBe('gentle'),
       )
     }
@@ -192,7 +202,7 @@ describe('routine characters (FR-009)', () => {
 
   it('Desk break uses standing or seated exercises without a mat', () => {
     for (let s = 0; s < 20; s++) {
-      for (const i of plan(makePlan(input({ routine: 'desk', minutes: 5, shuffle: s }))).items) {
+      for (const i of plan(makePlan(input({ routine: 'desk', minutes: 5, generation: s }))).items) {
         const e = ex(i.exerciseId)
         expect(['standing', 'seated']).toContain(e[i.version]!.position ?? e.position)
         expect(e.equipment).not.toContain('mat')
@@ -203,7 +213,7 @@ describe('routine characters (FR-009)', () => {
   it('Strength keeper makes at least half the main part strength or balance', () => {
     for (let s = 0; s < 20; s++) {
       const main = plan(
-        makePlan(input({ routine: 'strength', minutes: 20, shuffle: s })),
+        makePlan(input({ routine: 'strength', minutes: 20, generation: s })),
       ).items.filter((i) => i.phase === 'main')
       const strong = main.filter(
         (i) =>
@@ -227,7 +237,7 @@ describe('profile rules', () => {
     const profile: Profile = { ...DEFAULT_PROFILE, focusAreas: ['shoulders', 'hips'] }
     let hits = 0
     for (let s = 0; s < 50; s++) {
-      const items = plan(makePlan(input({ profile, routine: 'weekend', shuffle: s }))).items
+      const items = plan(makePlan(input({ profile, routine: 'weekend', generation: s }))).items
       if (
         items.some((i) =>
           ex(i.exerciseId).worksAreas.some((a) => a === 'shoulders' || a === 'hips'),
@@ -246,7 +256,7 @@ describe('profile rules', () => {
       focusAreas: target.worksAreas,
     }
     for (let s = 0; s < 30; s++) {
-      for (const i of plan(makePlan(input({ profile, routine: 'weekend', shuffle: s }))).items) {
+      for (const i of plan(makePlan(input({ profile, routine: 'weekend', generation: s }))).items) {
         const e = ex(i.exerciseId)
         if (e.loadsAreas.some((a) => target.loadsAreas.includes(a)) && e.easier)
           expect(i.version).toBe('easier')
@@ -263,7 +273,7 @@ describe('profile rules', () => {
             history: { done, yesterday: [], recent: [] },
             routine: 'weekend',
             minutes: 30,
-            shuffle: s,
+            generation: s,
           }),
         ),
       ).items
@@ -327,7 +337,7 @@ describe('phase preferences (004)', () => {
     let seen = 0
     for (let s = 0; s < 50; s++) {
       for (const routine of ['calm', 'weekend', 'strength'] as const) {
-        const r = makePlan(input({ library: allExercises, profile, routine, shuffle: s }))
+        const r = makePlan(input({ library: allExercises, profile, routine, generation: s }))
         if (r.kind !== 'plan') continue
         const cc = r.items.filter((i) => i.exerciseId === 'cat-cow')
         seen += cc.length
@@ -341,7 +351,7 @@ describe('phase preferences (004)', () => {
     let both = false
     for (let s = 0; s < 50 && !both; s++) {
       const r = plan(
-        makePlan(input({ library: allExercises, profile, routine: 'weekend', shuffle: s })),
+        makePlan(input({ library: allExercises, profile, routine: 'weekend', generation: s })),
       )
       const phases = r.items.filter((i) => i.exerciseId === 'cat-cow').map((i) => i.phase)
       if (phases.includes('warmup') && phases.includes('cooldown')) both = true
@@ -356,7 +366,9 @@ describe('phase preferences (004)', () => {
     const once: Profile = { ...DEFAULT_PROFILE, phasePrefs: { 'cat-cow': ['warmup'] } }
     for (let s = 0; s < 20; s++) {
       const r = plan(
-        makePlan(input({ library: allExercises, profile: once, routine: 'weekend', shuffle: s })),
+        makePlan(
+          input({ library: allExercises, profile: once, routine: 'weekend', generation: s }),
+        ),
       )
       const cc = r.items.filter((i) => i.exerciseId === 'cat-cow')
       expect(cc.length).toBeLessThanOrEqual(1)
@@ -367,13 +379,40 @@ describe('phase preferences (004)', () => {
 
 describe('swap and insufficient', () => {
   it('swaps one item for a different exercise in the same phase', () => {
-    const base = plan(makePlan(input({ routine: 'weekend' })))
-    const swapped = plan(makePlan(input({ routine: 'weekend', swaps: { 1: 1 } })))
-    expect(swapped.items[1].exerciseId).not.toBe(base.items[1].exerciseId)
-    expect(swapped.items[1].phase).toBe(base.items[1].phase)
-    expect(swapped.items[0]).toEqual(base.items[0])
-    const ids = swapped.items.map((i) => i.exerciseId)
+    const base = kept(input({ routine: 'weekend' }))
+    const swapped = swapItem(input({ routine: 'weekend' }), base, 1)
+    expect(swapped[1].exerciseId).not.toBe(base[1].exerciseId)
+    expect(swapped[1].phase).toBe(base[1].phase)
+    expect(swapped[1].passed).toEqual([base[1].exerciseId])
+    swapped.forEach((it, i) => i !== 1 && expect(it).toEqual(base[i]))
+    const ids = swapped.map((i) => i.exerciseId)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('keeps the swapped item near the slot’s time, within its range', () => {
+    const inp = input({ routine: 'weekend' })
+    const base = kept(inp)
+    const swapped = swapItem(inp, base, 1)[1]
+    expect(Math.abs(swapped.seconds - base[1].seconds)).toBeLessThanOrEqual(base[1].seconds)
+    const [min, max] = swapped.dose.range
+    const value = swapped.dose.kind === 'time' ? swapped.dose.seconds : swapped.dose.reps
+    expect(value).toBeGreaterThanOrEqual(min)
+    expect(value).toBeLessThanOrEqual(max)
+  })
+
+  it('does not swap back to a passed exercise until every alternative has been tried', () => {
+    const inp = input({ routine: 'weekend' })
+    let items = kept(inp)
+    const seen = [items[1].exerciseId]
+    for (let n = 0; n < 60; n++) {
+      items = swapItem(inp, items, 1)
+      const id = items[1].exerciseId
+      if (seen.includes(id)) break
+      seen.push(id)
+    }
+    // The cycle came back round to an exercise already seen, after several distinct ones.
+    expect(new Set(seen).size).toBe(seen.length)
+    expect(seen.length).toBeGreaterThan(2)
   })
 
   it('says when a routine cannot be filled, with a suggestion', () => {
@@ -420,7 +459,7 @@ describe('property test: 1,000 random profiles (SC-003)', () => {
       )
       const routine: RoutineId = pick(ROUTINE_ORDER)
       const minutes = pick([5, 10, 15, 20, 30, 45])
-      const res = makePlan(input({ profile, marks, routine, minutes, shuffle: n }))
+      const res = makePlan(input({ profile, marks, routine, minutes, generation: n }))
       if (res.kind === 'insufficient') continue
       for (const i of res.items) {
         const e = ex(i.exerciseId)
@@ -446,5 +485,50 @@ describe('routine for the time of day (US3)', () => {
     expect(routineForTime(new Date('2026-11-16T14:00:00'))).toBe('desk')
     expect(routineForTime(new Date('2026-11-21T09:00:00'))).toBe('weekend') // Saturday
     expect(routineForTime(new Date('2026-11-16T20:00:00'))).toBe('calm')
+  })
+})
+
+describe('repairing a kept plan (006 FR-005)', () => {
+  const inp = input({ routine: 'weekend' })
+  const base = kept(inp)
+
+  it('changes nothing when every item still fits', () => {
+    expect(repairPlan(inp, base)).toEqual({ items: base, notes: [] })
+  })
+
+  it('replaces only an item marked Not for me, with a note', () => {
+    const gone = base[1].exerciseId
+    const r = repairPlan({ ...inp, marks: { [gone]: 'notForMe' } }, base)
+    expect(r.items[1].exerciseId).not.toBe(gone)
+    expect(r.items.map((i) => i.exerciseId)).not.toContain(gone)
+    r.items.forEach((it, i) => i !== 1 && expect(it).toEqual(base[i]))
+    expect(r.notes).toEqual([
+      `${ex(gone).name} is now Not for me, so it was swapped for ${ex(r.items[1].exerciseId).name}.`,
+    ])
+  })
+
+  it('replaces an item that loads a newly avoided area', () => {
+    const i = base.findIndex((it) => ex(it.exerciseId).loadsAreas.length > 0)
+    expect(i).toBeGreaterThanOrEqual(0)
+    const area = ex(base[i].exerciseId).loadsAreas[0]
+    const profile = { ...inp.profile, avoidAreas: [area] }
+    const r = repairPlan({ ...inp, profile }, base)
+    for (const it of r.items) expect(ex(it.exerciseId).loadsAreas).not.toContain(area)
+    expect(r.notes.some((n) => n.includes('no longer fits your profile'))).toBe(true)
+  })
+
+  it('replaces an exercise that is no longer in the library', () => {
+    const items = [{ ...base[0], exerciseId: 'retired-move' }, ...base.slice(1)]
+    const r = repairPlan(inp, items)
+    expect(r.items[0].exerciseId).not.toBe('retired-move')
+    expect(r.notes[0]).toMatch(/no longer in the library/)
+  })
+
+  it('removes an item when nothing else fits, and says so', () => {
+    const tiny = LIB.filter((e) => base.some((b) => b.exerciseId === e.id))
+    const gone = base[0].exerciseId
+    const r = repairPlan({ ...inp, library: tiny, marks: { [gone]: 'notForMe' } }, base)
+    expect(r.items.map((i) => i.exerciseId)).toEqual(base.slice(1).map((i) => i.exerciseId))
+    expect(r.notes[0]).toMatch(/nothing else fits there/)
   })
 })

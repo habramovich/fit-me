@@ -9,6 +9,18 @@ export function todayKey(now = new Date()): string {
   return dayKey(now)
 }
 
+const plannedFormat = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+})
+
+/** "Planned Sat 14 Nov" for a kept plan, or null when it was planned today (spec 006). */
+export function plannedLabel(plannedAt: Date | null, now = new Date()): string | null {
+  if (!plannedAt || dayKey(plannedAt) === dayKey(now)) return null
+  return `Planned ${plannedFormat.format(plannedAt)}`
+}
+
 export function summariseHistory(
   sessions: Pick<PastSession, 'startedAt' | 'items'>[],
   now = new Date(),

@@ -35,9 +35,8 @@ export interface PlanInput {
   history: HistorySummary
   /** YYYY-MM-DD, part of the seed so each day differs. */
   today: string
-  shuffle: number
-  /** Item index → how many times it was swapped. */
-  swaps?: Record<number, number>
+  /** Seed counter of a kept plan: +1 per Reshuffle or new plan (spec 006 R3). */
+  generation: number
 }
 
 export interface PlanItem {
@@ -47,6 +46,11 @@ export interface PlanItem {
   phase: Phase
   reason: string
   seconds: number
+}
+
+/** A plan item as kept (spec 006): `passed` lists exercises already swapped away from the slot. */
+export interface KeptItem extends PlanItem {
+  passed: string[]
 }
 
 export type PlanResult =
@@ -310,10 +314,18 @@ function scaleDose(dose: Dose, factor: number, allowSets: boolean): Dose {
 
 // ---------- Main ----------
 
-export function makePlan(input: PlanInput): PlanResult {
-  const routine = ROUTINES[input.routine]
-  const rng = seededRandom(hashSeed(`${input.today}|${input.routine}|${input.shuffle}`))
+interface Context {
+  routine: RoutineDef
+  pool: Candidate[]
+  usable: Candidate[]
+  byId: Map<string, Exercise>
+  recentAreas: Set<BodyArea>
+}
 
+/** The eligible candidates (with their seeded jitter) and what scoring needs. */
+function context(input: PlanInput): Context {
+  const routine = ROUTINES[input.routine]
+  const rng = seededRandom(hashSeed(`${input.today}|${input.routine}|${input.generation}`))
   const pool: Candidate[] = []
   for (const e of input.library) {
     const key = eligible(e, input, routine)
@@ -328,17 +340,25 @@ export function makePlan(input: PlanInput): PlanResult {
       prefs: prefs && prefs.length > 0 ? prefs : undefined,
     })
   }
+  const byId = new Map(input.library.map((e) => [e.id, e]))
+  return {
+    routine,
+    pool,
+    usable: pool.filter((c) => PHASES.some((p) => fitsPhase(c, p, routine))),
+    byId,
+    recentAreas: new Set<BodyArea>(
+      input.history.recent.flatMap((id) => byId.get(id)?.worksAreas ?? []),
+    ),
+  }
+}
 
-  const usable = pool.filter((c) => PHASES.some((p) => fitsPhase(c, p, routine)))
+export function makePlan(input: PlanInput): PlanResult {
+  const { routine, pool, usable, byId, recentAreas } = context(input)
   const mainOk = pool.some((c) => fitsPhase(c, 'main', routine, true))
   if (usable.length < MIN_CANDIDATES || !mainOk) {
     return { kind: 'insufficient', routine: input.routine, suggestion: suggestRoutine(input) }
   }
 
-  const byId = new Map(input.library.map((e) => [e.id, e]))
-  const recentAreas = new Set<BodyArea>(
-    input.history.recent.flatMap((id) => byId.get(id)?.worksAreas ?? []),
-  )
   const target = input.minutes * 60
   const tolerance = input.minutes <= 10 ? 60 : 120
 
@@ -480,39 +500,144 @@ export function makePlan(input: PlanInput): PlanResult {
     }
   }
 
-  // Swaps: replace an item with the next-best alternative for its phase.
-  for (const [indexText, count] of Object.entries(input.swaps ?? {})) {
-    const index = Number(indexText)
-    const item = picked[index]
-    if (!item || count <= 0) continue
-    st.phase = item.phase
-    const alternatives = usable
-      .filter((c) => used.canUse(c, item.phase) && fitsPhase(c, item.phase, routine, true))
-      .map((c) => ({ c, s: score(c, input, routine, st, recentAreas) }))
-      .sort((a, b) => b.s.score - a.s.score || a.c.exercise.id.localeCompare(b.c.exercise.id))
-    if (alternatives.length === 0) continue
-    const { c, s } = alternatives[(count - 1) % alternatives.length]
-    used.remove(item.exerciseId, item.phase)
-    used.add(c.exercise.id, item.phase)
-    const dose = scaleDose(
-      c.version.dose,
-      item.seconds / Math.max(1, estimateSeconds(c.version)),
-      item.phase === 'main',
-    )
-    picked[index] = {
-      exerciseId: c.exercise.id,
-      version: c.versionKey,
-      dose,
-      phase: item.phase,
-      reason: s.reason,
-      seconds: secondsFor(c.version, dose),
-      score: s.score,
-    }
-  }
-
   const items: PlanItem[] = picked.map(({ score: _score, ...rest }) => rest)
   const totalSeconds = items.reduce((sum, p) => sum + p.seconds, 0)
   return { kind: 'plan', items, totalSeconds, shortOfTime: totalSeconds < target - tolerance }
+}
+
+// ---------- Changing a kept plan (spec 006 R3) ----------
+
+/** The best candidate for slot `index`, other than the plan's other items and `exclude`. */
+function bestAlternative(
+  input: PlanInput,
+  ctx: Context,
+  items: readonly KeptItem[],
+  index: number,
+  exclude: readonly string[],
+): { c: Candidate; s: Scored } | null {
+  const item = items[index]
+  const used = new Usage()
+  items.forEach((it, i) => i !== index && used.add(it.exerciseId, it.phase))
+  const known = (id: string) => input.history.done.includes(id) || input.marks[id] === 'favourite'
+  const others = items.filter((_, i) => i !== index)
+  const mains = others.filter((it) => it.phase === 'main')
+  const st: PickState = {
+    phase: item.phase,
+    newCount: others.filter((it) => !known(it.exerciseId)).length,
+    mainCount: mains.length,
+    mainStrengthCount: mains.filter((it) => {
+      const e = ctx.byId.get(it.exerciseId)
+      return e && (e.technique === 'strength' || e.tags.includes('balance'))
+    }).length,
+    firstOfPhase: false,
+  }
+  let best: { c: Candidate; s: Scored } | null = null
+  for (const c of ctx.usable) {
+    if (exclude.includes(c.exercise.id)) continue
+    if (!used.canUse(c, item.phase) || !fitsPhase(c, item.phase, ctx.routine, true)) continue
+    const s = score(c, input, ctx.routine, st, ctx.recentAreas)
+    if (
+      !best ||
+      s.score > best.s.score ||
+      (s.score === best.s.score && c.exercise.id < best.c.exercise.id)
+    )
+      best = { c, s }
+  }
+  return best
+}
+
+/** The candidate as a plan item filling the same time as `slot`. */
+function fillSlot(slot: KeptItem, { c, s }: { c: Candidate; s: Scored }, passed: string[]) {
+  const dose = scaleDose(
+    c.version.dose,
+    slot.seconds / Math.max(1, estimateSeconds(c.version)),
+    slot.phase === 'main',
+  )
+  return {
+    exerciseId: c.exercise.id,
+    version: c.versionKey,
+    dose,
+    phase: slot.phase,
+    reason: s.reason,
+    seconds: secondsFor(c.version, dose),
+    passed,
+  }
+}
+
+/**
+ * Swaps slot `index` for the best alternative that hasn't been in that slot yet. Once every
+ * alternative has been passed, the cycle starts again. Other items are unchanged.
+ */
+export function swapItem(input: PlanInput, items: readonly KeptItem[], index: number): KeptItem[] {
+  const item = items[index]
+  if (!item) return [...items]
+  const ctx = context(input)
+  let passed = [...new Set([...item.passed, item.exerciseId])]
+  let best = bestAlternative(input, ctx, items, index, passed)
+  if (!best) {
+    passed = [item.exerciseId]
+    best = bestAlternative(input, ctx, items, index, passed)
+  }
+  if (!best) return [...items]
+  const next = fillSlot(item, best, passed)
+  return items.map((it, i) => (i === index ? next : it))
+}
+
+type Unfit = 'notForMe' | 'profile' | 'removed'
+
+/** Why a kept item can't be used any more, or null if it still can. */
+function unfit(input: PlanInput, ctx: Context, item: KeptItem): Unfit | null {
+  const e = ctx.byId.get(item.exerciseId)
+  const v = e?.[item.version]
+  if (!e || !v) return 'removed'
+  if (input.marks[e.id] === 'notForMe') return 'notForMe'
+  const { profile } = input
+  if (profile.techniques[e.technique] === 'none') return 'profile'
+  if (e.loadsAreas.some((a) => profile.avoidAreas.includes(a))) return 'profile'
+  const have = new Set<string>(['none', ...profile.equipment])
+  if (!equipmentOf(e, v).every((q) => have.has(q))) return 'profile'
+  return null
+}
+
+const UNFIT_TEXT: Record<Unfit, string> = {
+  notForMe: 'is now Not for me',
+  profile: 'no longer fits your profile',
+  removed: 'is no longer in the library',
+}
+
+/**
+ * Replaces the items of a kept plan that can no longer be used (spec 006 FR-005), each with the
+ * best alternative for its part, or removes them when nothing fits. Everything else is unchanged.
+ * Returns no items when nothing in the plan can be kept.
+ */
+export function repairPlan(
+  input: PlanInput,
+  items: readonly KeptItem[],
+): { items: KeptItem[]; notes: string[] } {
+  const ctx = context(input)
+  const name = (id: string) => ctx.byId.get(id)?.name ?? 'An exercise'
+  let out = [...items]
+  const notes: string[] = []
+  for (let i = 0; i < out.length;) {
+    const why = unfit(input, ctx, out[i])
+    if (!why) {
+      i++
+      continue
+    }
+    const old = out[i]
+    const best = bestAlternative(input, ctx, out, i, [old.exerciseId])
+    if (best) {
+      out = out.map((it, j) => (j === i ? fillSlot(old, best, []) : it))
+      notes.push(
+        `${name(old.exerciseId)} ${UNFIT_TEXT[why]}, so it was swapped for ${best.c.exercise.name}.`,
+      )
+      i++
+    } else {
+      out = out.filter((_, j) => j !== i)
+      notes.push(`${name(old.exerciseId)} ${UNFIT_TEXT[why]}; nothing else fits there.`)
+    }
+  }
+  return { items: out, notes }
 }
 
 /** The routine with the most usable exercises, other than the requested one. */

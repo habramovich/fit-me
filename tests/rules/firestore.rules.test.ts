@@ -287,6 +287,66 @@ describe('saved sets (004 rows 31–35)', () => {
   })
 })
 
+describe('kept plans (006 rows 36–40)', () => {
+  const item = {
+    exerciseId: 'cat-cow',
+    version: 'standard',
+    phase: 'warmup',
+    dose: { kind: 'reps', reps: 8 },
+    reason: 'Focus: hips',
+    seconds: 60,
+    passed: [],
+  }
+  const kept = (over: Record<string, unknown> = {}) => ({
+    schemaVersion: 1,
+    routine: 'calm',
+    minutes: 15,
+    generation: 0,
+    items: [item, item, item],
+    notes: [],
+    shortOfTime: false,
+    plannedAt: new Date(),
+    viewedAt: new Date(),
+    usedAt: null,
+    sessionId: null,
+    ...over,
+  })
+  const ref = (db = as(A), uid = A.uid) => doc(db, 'users', uid, 'plans', 'calm-15')
+
+  it('36. A can create, update, read, list and delete own plans', async () => {
+    await assertSucceeds(setDoc(ref(), kept()))
+    await assertSucceeds(updateDoc(ref(), { items: [item], notes: ['changed'] }))
+    await assertSucceeds(updateDoc(ref(), { usedAt: new Date(), sessionId: 's1' }))
+    await assertSucceeds(getDoc(ref()))
+    await assertSucceeds(getDocs(collection(as(A), 'users', A.uid, 'plans')))
+    await assertSucceeds(deleteDoc(ref()))
+  })
+
+  it('37. items must be a list of 1–40', async () => {
+    await assertFails(setDoc(ref(), kept({ items: 'cat-cow' })))
+    await assertFails(setDoc(ref(), kept({ items: [] })))
+    await assertSucceeds(setDoc(ref(), kept({ items: Array.from({ length: 40 }, () => item) })))
+    await assertFails(setDoc(ref(), kept({ items: Array.from({ length: 41 }, () => item) })))
+  })
+
+  it('38. routine must be known and minutes 5–90', async () => {
+    await assertFails(setDoc(ref(), kept({ routine: 'marathon' })))
+    await assertFails(setDoc(ref(), kept({ minutes: 4 })))
+    await assertFails(setDoc(ref(), kept({ minutes: 91 })))
+    await assertFails(setDoc(ref(), kept({ minutes: '15' })))
+  })
+
+  it("39. A cannot read or write B's plans", async () => {
+    await assertFails(getDocs(collection(as(A), 'users', B.uid, 'plans')))
+    await assertFails(getDoc(ref(as(A), B.uid)))
+    await assertFails(setDoc(ref(as(A), B.uid), kept()))
+  })
+
+  it('40. an uninvited user cannot create plans', async () => {
+    await assertFails(setDoc(ref(as(U), U.uid), kept()))
+  })
+})
+
 describe('everything else', () => {
   it('16. any other collection is denied', async () => {
     const db = as(A)

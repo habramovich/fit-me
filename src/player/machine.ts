@@ -35,7 +35,8 @@ export type PlayerEvent =
   | { type: 'setDone' }
   | { type: 'finishEarly' }
   | { type: 'continueSide' }
-  | { type: 'rate'; rating: Rating }
+  /** `null`: done without a rating (Skip next time, spec 006 US3). */
+  | { type: 'rate'; rating: Rating | null }
   | { type: 'skip' }
   | { type: 'back' }
   | { type: 'pause' }

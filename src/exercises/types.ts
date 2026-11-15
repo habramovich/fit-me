@@ -58,6 +58,16 @@ export type Level = 'beginner' | 'intermediate' | 'advanced'
 export type Phase = 'warmup' | 'main' | 'cooldown'
 export type VersionKey = 'easier' | 'standard' | 'harder'
 
+/** How fast to move (spec 006 US2). */
+export type Pace = 'hold' | 'slow' | 'flowing' | 'brisk'
+
+export const PACE_LABEL: Record<Pace, string> = {
+  hold: 'Hold',
+  slow: 'Slow and controlled',
+  flowing: 'Flowing',
+  brisk: 'Brisk',
+}
+
 export interface RepsDose {
   kind: 'reps'
   reps: number
@@ -151,6 +161,8 @@ export interface FigureSpec {
   breath?: Breath[]
   /** Screen-reader description of the whole movement. */
   alt: string
+  /** For holds: the keyframe the figure moves into and stays on (default 1). */
+  holdAt?: number
 }
 
 export interface Version {
@@ -168,6 +180,8 @@ export interface Version {
   position?: Position
   /** Equipment for this version if different from the exercise's. */
   equipment?: Equipment[]
+  /** Only when the default from technique and dose is wrong (see `paceOf`). */
+  pace?: Pace
 }
 
 export interface Exercise {
@@ -186,4 +200,6 @@ export interface Exercise {
   easier?: Version
   harder?: Version
   batch: number
+  /** Only when the default from technique and dose is wrong (see `paceOf`). */
+  pace?: Pace
 }
