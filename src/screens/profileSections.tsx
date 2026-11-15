@@ -235,6 +235,18 @@ export function RoutineDefaultsSection({ profile, onChange }: SectionProps) {
           />
         ))}
       </div>
+      <h3 className="small">Weekly goal</h3>
+      <div className="card card--list">
+        <Stepper
+          label="Active minutes a week"
+          value={profile.weeklyMinutes}
+          min={30}
+          max={600}
+          step={15}
+          unit="min"
+          onChange={(weeklyMinutes) => onChange({ weeklyMinutes })}
+        />
+      </div>
     </section>
   )
 }

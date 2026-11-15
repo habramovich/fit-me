@@ -35,6 +35,8 @@ export interface Profile {
   routineMinutes: Record<RoutineId, number>
   /** Parts the person likes each exercise in, by exercise id (004). Missing = no preference. */
   phasePrefs: Record<string, Phase[]>
+  /** Weekly goal in active minutes (005), 30–600. */
+  weeklyMinutes: number
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -52,6 +54,7 @@ export const DEFAULT_PROFILE: Profile = {
   tryNew: 'mix',
   routineMinutes: { calm: 15, desk: 5, strength: 20, weekend: 35, cardio: 15 },
   phasePrefs: {},
+  weeklyMinutes: 90,
 }
 
 /** Fills missing fields with defaults (older or partial records). */
