@@ -1,48 +1,41 @@
 import { limbs } from '../build'
 import type { Exercise, FigureSpec, Point, Pose } from '../types'
 
-// Front view, standing, fingertips on shoulders; the elbows draw circles.
-// N is the figure's right (viewer's left). Wrists stay at the shoulders.
-const legsN = { kn: [118, 122] as Point, an: [116, 150] as Point, to: [106, 151] as Point }
-const legsF = { kn: [132, 122] as Point, an: [134, 150] as Point, to: [144, 151] as Point }
-function elbows(n: Point, f: Point): Pose {
+// Side view (facing left), standing, fingertips on the shoulders. The elbows draw a circle
+// forward, up, back and down, which is easiest to see from the side.
+const SH: Point = [100, 50]
+const HAND: Point = [94, 48]
+function elbows(el: Point): Pose {
   return {
-    head: [125, 26],
-    sh: [125, 48],
-    hip: [125, 94],
-    N: limbs(n, [113, 52], legsN.kn, legsN.an, legsN.to),
-    F: limbs(f, [137, 52], legsF.kn, legsF.an, legsF.to),
+    head: [97, 27],
+    sh: SH,
+    hip: [102, 100],
+    N: limbs(el, HAND, [100, 126], [100, 150], [88, 151]),
+    F: limbs([el[0] + 4, el[1] - 2], [HAND[0] + 4, HAND[1] - 1], [105, 126], [105, 150], [93, 151]),
   }
 }
 
-// Mirror x around the centre line for the left elbow's arrows.
-const m = (p: Point): Point => [250 - p[0], p[1]]
+// Elbow positions around the shoulder, and the arrow path just outside them.
+const down: Point = [98, 80]
+const forward: Point = [70, 60]
+// Up and slightly forward, so the forearm clears the head.
+const up: Point = [74, 24]
+const back: Point = [128, 48]
 const path: Point[] = [
-  [96, 90],
-  [110, 78],
-  [94, 22],
-  [80, 58],
+  [96, 94],
+  [56, 60],
+  [66, 8],
+  [142, 44],
 ]
-const arrowsFor = (i: number) => {
-  const p = path[i]
-  const q = path[(i + 1) % path.length]
-  return [
-    { p, q, bend: -10 },
-    { p: m(p), q: m(q), bend: 10 },
-  ]
-}
+const arrow = (i: number) => [{ p: path[i], q: path[(i + 1) % 4], bend: -14 }]
 
 const figure: FigureSpec = {
-  view: 'front',
-  keyframes: [
-    elbows([104, 80], [146, 80]),
-    elbows([111, 66], [139, 66]),
-    elbows([100, 30], [150, 30]),
-    elbows([90, 56], [160, 56]),
-  ],
-  arrows: [arrowsFor(0), arrowsFor(1), arrowsFor(2), arrowsFor(3)],
-  labels: ['Elbows together in front', 'Elbows up', 'Elbows back and open', 'Elbows down'],
-  alt: 'Standing with fingertips on the shoulders, the elbows draw big circles: together in front, up, back and open, and down.',
+  view: 'side',
+  keyframes: [elbows(down), elbows(forward), elbows(up), elbows(back)],
+  arrows: [arrow(0), arrow(1), arrow(2), arrow(3)],
+  labels: ['Elbows forward', 'Elbows up', 'Elbows back', 'Elbows down'],
+  breath: ['in', 'in', 'out', 'out'],
+  alt: 'Standing, seen from the side, fingertips on the shoulders; the elbows draw a big circle forward, up, back and down. Breathe in as they rise, out as they come down.',
 }
 
 const steps = [
@@ -74,7 +67,7 @@ export const shoulderRotations: Exercise = {
     steps,
     cues: ['Big, slow elbow circles', 'Shoulders away from ears', 'Then reverse direction'],
     breathing: 'Breathe in as the elbows rise, out as they come down.',
-    figure: { ...figure, breath: ['in', 'in', 'out', 'out'] },
+    figure,
     secondsPerRep: 4,
   },
   easier: {
@@ -88,7 +81,7 @@ export const shoulderRotations: Exercise = {
     },
     steps: [steps[0], 'Make small circles, staying well below shoulder height.', steps[2]],
     cues: ['Small circles', 'Stay below shoulder height', 'Pain-free range only'],
-    breathing: 'Breathe slowly and naturally.',
+    breathing: 'Breathe in as the elbows rise, out as they come down.',
     figure,
     secondsPerRep: 3,
   },
@@ -112,7 +105,7 @@ export const shoulderRotations: Exercise = {
       'Slow and controlled',
     ],
     breathing: 'Breathe in as the elbows rise, out as they come down.',
-    figure: { ...figure, breath: ['in', 'in', 'out', 'out'] },
+    figure,
     secondsPerRep: 5,
   },
 }

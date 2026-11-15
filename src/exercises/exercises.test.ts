@@ -29,7 +29,8 @@ function checkFigure(f: FigureSpec, repeated: boolean) {
   f.labels.forEach((l) => expect(l.length).toBeGreaterThan(0))
   for (let i = 0; i < n; i++) {
     const arrows = transitionArrows(f, i)
-    expect(arrows.length, `arrows for transition ${i}`).toBeGreaterThanOrEqual(1)
+    // A ring (hoop) can show the path instead of arrows.
+    expect(arrows.length, `arrows for transition ${i}`).toBeGreaterThanOrEqual(f.ring ? 0 : 1)
     expect(arrows.length).toBeLessThanOrEqual(2)
     arrows.forEach((a) => expect(isPoint(a.p) && isPoint(a.q)).toBe(true))
   }

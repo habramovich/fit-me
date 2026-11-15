@@ -9,6 +9,8 @@ import {
   limbSegments,
   phaseAt,
   poseAt,
+  ringDot,
+  ringPaths,
   transitionArrows,
   type Phase,
 } from './geometry'
@@ -63,6 +65,8 @@ export interface FigureProps {
   /** Shown when the figure has no per-movement breath (holds, cardio). */
   breathing?: string
   className?: string
+  /** Freeze at the start of this transition, showing its arrows (for review renders). */
+  still?: number
 }
 
 export function Figure({
@@ -71,14 +75,16 @@ export function Figure({
   thumbnail = false,
   breathing,
   className,
+  still,
 }: FigureProps) {
   const reduced = usePrefersReducedMotion()
-  const animate = playing && !thumbnail
+  const animate = playing && !thumbnail && still === undefined
   const elapsed = useAnimationClock(animate)
   const n = spec.keyframes.length
 
   let phase: Phase
-  if (thumbnail) phase = { transition: 0, k: 0, moving: false }
+  if (still !== undefined) phase = { transition: still % n, k: 0, moving: true }
+  else if (thumbnail) phase = { transition: 0, k: 0, moving: false }
   else if (reduced) {
     phase = { transition: Math.floor(elapsed / REDUCED_STEP_SECONDS) % n, k: 0, moving: false }
   } else phase = phaseAt(elapsed, n)
@@ -97,6 +103,18 @@ export function Figure({
   const frontHands = front ? [pose.N.wr, pose.F.wr] : [pose.N.wr]
 
   const arrows = thumbnail ? [] : transitionArrows(spec, phase.transition)
+  const ring = spec.ring ? ringPaths(spec.ring) : null
+  const dot = spec.ring ? ringDot(spec.ring, n, phase) : null
+  const dotEl = dot && (
+    <circle
+      cx={dot.point[0]}
+      cy={dot.point[1]}
+      r="5.5"
+      fill="var(--arrow)"
+      stroke="#fff"
+      strokeWidth="2"
+    />
+  )
   const label = labelFor(spec, phase.transition)
   const breath = breathFor(spec, phase.transition)
   const f = (x: number) => x.toFixed(1)
@@ -146,6 +164,18 @@ export function Figure({
             />
           </g>
         )}
+        {ring && (
+          <path
+            d={ring.back}
+            stroke="var(--arrow)"
+            strokeWidth="3"
+            strokeDasharray="1 6"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.45"
+          />
+        )}
+        {dot && !dot.front && dotEl}
         <g stroke="var(--figure-far)" strokeLinecap="round" fill="none">
           {behind.map((s) => (
             <line
@@ -221,6 +251,17 @@ export function Figure({
         {frontHands.map((p, i) => (
           <circle key={i} cx={p[0]} cy={p[1]} r="5.5" fill="var(--figure-near-arm)" />
         ))}
+        {ring && (
+          <path
+            d={ring.front}
+            stroke="var(--arrow)"
+            strokeWidth="3"
+            strokeDasharray="1 6"
+            strokeLinecap="round"
+            fill="none"
+          />
+        )}
+        {dot && dot.front && dotEl}
         {arrows.length > 0 && (
           <g opacity={phase.moving || reduced ? 1 : 0.4}>
             {arrows.map((a, i) => {

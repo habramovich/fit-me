@@ -12,6 +12,9 @@ npm-debug.log*
 # Firebase CLI cache
 .firebase/
 
+# Figure review renders (npm run render:figures)
+figure-renders/
+
 # Env files
 .env
 .env.*

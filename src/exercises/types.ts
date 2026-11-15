@@ -117,12 +117,27 @@ export interface Props {
   wall?: number
 }
 
+/**
+ * A flat ellipse (a "hoop" seen from slightly above) for movements that circle in the horizontal
+ * plane, e.g. hip circles. A dot travels round it in step with the keyframes.
+ */
+export interface Ring {
+  center: Point
+  rx: number
+  ry: number
+  /** Dot angle at keyframe 0, in radians (0 = right, π/2 = front/bottom, π = left). */
+  start: number
+  /** +1 or -1: which way the dot travels. */
+  dir: 1 | -1
+}
+
 export interface FigureSpec {
   view: 'side' | 'front'
   props?: Props
+  ring?: Ring
   /** 2–4 key poses, looped A → B (→ C …) → A. */
   keyframes: Pose[]
-  /** One list per transition (i → i+1, last → first). */
+  /** One list per transition (i → i+1, last → first). May be empty when a `ring` shows the path. */
   arrows: Arrow[][]
   /** One short phrase per transition, e.g. "Lift the hips". */
   labels: string[]

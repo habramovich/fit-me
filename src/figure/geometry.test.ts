@@ -7,6 +7,8 @@ import {
   labelFor,
   limbSegments,
   phaseAt,
+  ringDot,
+  ringPaths,
   smoothstep,
   transitionArrows,
   DEFAULT_TIMING,
@@ -112,6 +114,33 @@ describe('arrowPaths', () => {
     expect(line.startsWith('M0.0 0.0')).toBe(true)
     expect(head.startsWith('M100.0 0.0')).toBe(true)
     expect(line).toContain('93.0 0.0')
+  })
+})
+
+describe('ring', () => {
+  const ring = {
+    center: [100, 100] as [number, number],
+    rx: 30,
+    ry: 10,
+    start: Math.PI,
+    dir: -1 as const,
+  }
+
+  it('starts at the given angle and moves a quarter turn per transition (4 keyframes)', () => {
+    const at0 = ringDot(ring, 4, { transition: 0, k: 0, moving: false }).point
+    expect(at0[0]).toBeCloseTo(70)
+    expect(at0[1]).toBeCloseTo(100)
+    const at1 = ringDot(ring, 4, { transition: 1, k: 0, moving: false })
+    expect(at1.point[0]).toBeCloseTo(100)
+    expect(at1.point[1]).toBeCloseTo(110) // front (bottom) of the hoop
+    expect(at1.front).toBe(true)
+    expect(ringDot(ring, 4, { transition: 3, k: 0, moving: false }).front).toBe(false)
+  })
+
+  it('draws the back half over the top and the front half under', () => {
+    const { back, front } = ringPaths(ring)
+    expect(back).toBe('M130.0 100.0 A30 10 0 0 0 70.0 100.0')
+    expect(front).toBe('M70.0 100.0 A30 10 0 0 0 130.0 100.0')
   })
 })
 
