@@ -290,6 +290,51 @@ describe('profile rules', () => {
   })
 })
 
+describe('phase preferences (004)', () => {
+  const profile: Profile = { ...DEFAULT_PROFILE, phasePrefs: { 'cat-cow': ['warmup', 'cooldown'] } }
+
+  it('never puts cat-cow in main when preferred as warm-up and cool-down (SC-004)', () => {
+    let seen = 0
+    for (let s = 0; s < 50; s++) {
+      for (const routine of ['calm', 'weekend', 'strength'] as const) {
+        const r = makePlan(input({ library: allExercises, profile, routine, shuffle: s }))
+        if (r.kind !== 'plan') continue
+        const cc = r.items.filter((i) => i.exerciseId === 'cat-cow')
+        seen += cc.length
+        cc.forEach((i) => expect(i.phase).not.toBe('main'))
+      }
+    }
+    expect(seen).toBeGreaterThan(0)
+  })
+
+  it('may use it in both warm-up and cool-down, and says why', () => {
+    let both = false
+    for (let s = 0; s < 50 && !both; s++) {
+      const r = plan(
+        makePlan(input({ library: allExercises, profile, routine: 'weekend', shuffle: s })),
+      )
+      const phases = r.items.filter((i) => i.exerciseId === 'cat-cow').map((i) => i.phase)
+      if (phases.includes('warmup') && phases.includes('cooldown')) both = true
+      r.items
+        .filter((i) => i.exerciseId === 'cat-cow')
+        .forEach((i) => expect(i.reason).toMatch(/Your (warm-up|cool-down) pick|.+/))
+    }
+    expect(both).toBe(true)
+  })
+
+  it('without both bookends, an exercise is used once', () => {
+    const once: Profile = { ...DEFAULT_PROFILE, phasePrefs: { 'cat-cow': ['warmup'] } }
+    for (let s = 0; s < 20; s++) {
+      const r = plan(
+        makePlan(input({ library: allExercises, profile: once, routine: 'weekend', shuffle: s })),
+      )
+      const cc = r.items.filter((i) => i.exerciseId === 'cat-cow')
+      expect(cc.length).toBeLessThanOrEqual(1)
+      cc.forEach((i) => expect(i.phase).toBe('warmup'))
+    }
+  })
+})
+
 describe('swap and insufficient', () => {
   it('swaps one item for a different exercise in the same phase', () => {
     const base = plan(makePlan(input({ routine: 'weekend' })))

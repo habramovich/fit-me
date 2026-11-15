@@ -242,6 +242,51 @@ describe('profile (003 rows 29–30)', () => {
   })
 })
 
+describe('saved sets (004 rows 31–35)', () => {
+  const item = {
+    exerciseId: 'cat-cow',
+    version: 'standard',
+    phase: 'warmup',
+    dose: { kind: 'reps', reps: 8 },
+  }
+  const set = (name: string, n: number) => ({
+    schemaVersion: 1,
+    name,
+    source: 'manual',
+    items: Array.from({ length: n }, () => item),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  })
+
+  it('31. A can create, update, read, list and delete own sets', async () => {
+    const ref = doc(as(A), 'users', A.uid, 'sets', 's1')
+    await assertSucceeds(setDoc(ref, set('My calm morning', 3)))
+    await assertSucceeds(updateDoc(ref, { items: [item], updatedAt: new Date() }))
+    await assertSucceeds(getDoc(ref))
+    await assertSucceeds(getDocs(collection(as(A), 'users', A.uid, 'sets')))
+    await assertSucceeds(deleteDoc(ref))
+  })
+
+  it('32. names must be 1–60 characters', async () => {
+    await assertFails(setDoc(doc(as(A), 'users', A.uid, 'sets', 's1'), set('', 1)))
+    await assertFails(setDoc(doc(as(A), 'users', A.uid, 'sets', 's1'), set('x'.repeat(61), 1)))
+  })
+
+  it('33. a set holds at most 40 items', async () => {
+    await assertSucceeds(setDoc(doc(as(A), 'users', A.uid, 'sets', 's1'), set('Big', 40)))
+    await assertFails(setDoc(doc(as(A), 'users', A.uid, 'sets', 's2'), set('Too big', 41)))
+  })
+
+  it("34. A cannot read or write B's sets", async () => {
+    await assertFails(getDocs(collection(as(A), 'users', B.uid, 'sets')))
+    await assertFails(setDoc(doc(as(A), 'users', B.uid, 'sets', 's1'), set('Mine', 1)))
+  })
+
+  it('35. an uninvited user cannot create sets', async () => {
+    await assertFails(setDoc(doc(as(U), 'users', U.uid, 'sets', 's1'), set('Mine', 1)))
+  })
+})
+
 describe('everything else', () => {
   it('16. any other collection is denied', async () => {
     const db = as(A)

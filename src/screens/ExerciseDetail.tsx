@@ -1,8 +1,13 @@
 import { useState } from 'react'
-import { href } from '../app/router'
-import { formatDose, formatRange, getExercise } from '../exercises'
-import { BODY_AREA_LABEL, type VersionKey } from '../exercises/types'
+import { goBack, href } from '../app/router'
+import { saveProfile } from '../data/repo/users'
+import { getExercise, formatDose, formatRange } from '../exercises'
+import { BODY_AREA_LABEL, type Phase, type VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
+import type { Profile } from '../profile/types'
+import { PHASE_ORDER } from '../sets/edit'
+import { AddToSet } from './AddToSet'
+import { ChipMulti } from './controls'
 import { ADVICE_NOTE, MarkButtons, TechniqueTag } from './parts'
 
 const VERSION_LABEL: Record<VersionKey, string> = {
@@ -19,16 +24,42 @@ const EQUIPMENT_LABEL = {
   band: 'Resistance band',
 }
 
-export function ExerciseDetail({ id }: { id: string }) {
+const PHASE_LABEL: Record<Phase, string> = {
+  warmup: 'Warm-up',
+  main: 'Main',
+  cooldown: 'Cool-down',
+}
+
+export function ExerciseDetail({
+  id,
+  uid,
+  profile,
+}: {
+  id: string
+  uid: string
+  profile: Profile
+}) {
   const exercise = getExercise(id)
   const [versionKey, setVersionKey] = useState<VersionKey>('standard')
+  const [adding, setAdding] = useState(false)
+
+  const back = (
+    <button
+      type="button"
+      className="back-link back-link--button"
+      onClick={() => goBack({ name: 'library' })}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6l-6 6 6 6" />
+      </svg>
+      Back
+    </button>
+  )
 
   if (!exercise) {
     return (
       <main className="screen">
-        <a href="#/library" className="back-link">
-          Library
-        </a>
+        {back}
         <p>That exercise isn’t in the library.</p>
       </main>
     )
@@ -36,15 +67,13 @@ export function ExerciseDetail({ id }: { id: string }) {
 
   const version = exercise[versionKey] ?? exercise.standard
   const missing = !exercise[versionKey]
+  const prefs = profile.phasePrefs[exercise.id] ?? []
+  const setPrefs = (next: Phase[]) =>
+    void saveProfile(uid, { phasePrefs: { [exercise.id]: next } }).catch(() => {})
 
   return (
     <main className="screen">
-      <a href="#/library" className="back-link">
-        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 6l-6 6 6 6" />
-        </svg>
-        Library
-      </a>
+      {back}
 
       <div className="card figure-card">
         <Figure key={versionKey} spec={version.figure} breathing={version.breathing} />
@@ -112,6 +141,39 @@ export function ExerciseDetail({ id }: { id: string }) {
       </dl>
 
       <MarkButtons id={exercise.id} name={exercise.name} />
+
+      <section className="stack-sm" aria-labelledby="like-h">
+        <h2 id="like-h">I like this as</h2>
+        <ChipMulti
+          label="I like this as"
+          options={PHASE_ORDER}
+          labels={PHASE_LABEL}
+          value={prefs}
+          onChange={setPrefs}
+        />
+        <p className="muted small">
+          {prefs.length === 0
+            ? 'No preference: plans use it wherever it fits.'
+            : `Plans put it only in ${prefs.map((p) => PHASE_LABEL[p].toLowerCase()).join(' and ')}${
+                prefs.includes('warmup') && prefs.includes('cooldown')
+                  ? ', and may use it in both'
+                  : ''
+              }.`}
+        </p>
+      </section>
+
+      {adding ? (
+        <AddToSet
+          exerciseId={exercise.id}
+          version={missing ? 'standard' : versionKey}
+          defaultPhase={prefs[0] ?? exercise.phases[0]}
+          onDone={() => setAdding(false)}
+        />
+      ) : (
+        <button type="button" className="btn btn--outline" onClick={() => setAdding(true)}>
+          Add to set
+        </button>
+      )}
 
       <a
         className="btn btn--primary btn--big"

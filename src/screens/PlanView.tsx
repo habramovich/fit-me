@@ -1,5 +1,8 @@
-// The planned session: reasons, Swap, Reshuffle, Start (spec 003 US2, FR-011, FR-012).
-import { href, type PlanParams } from '../app/router'
+// The planned session: reasons, Swap, Reshuffle, Save as set, Start (spec 003 US2; 004 US1).
+import { useState } from 'react'
+import { href, navigate, type PlanParams } from '../app/router'
+import { useSets } from '../app/setsContext'
+import { fromPlan } from '../sets/edit'
 import { formatDose, getExercise } from '../exercises'
 import type { Phase } from '../exercises/types'
 import { Figure } from '../figure/Figure'
@@ -8,6 +11,8 @@ import { ROUTINES } from '../planner/routines'
 import { handOffPlan, usePlan } from '../planner/usePlan'
 import type { Profile } from '../profile/types'
 import { TechniqueTag } from './parts'
+
+const dayFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
 
 const PHASE_LABEL: Record<Phase, string> = {
   warmup: 'Warm-up',
@@ -26,6 +31,9 @@ export function PlanView({
 }) {
   const result = usePlan(params, profile, history)
   const routine = ROUTINES[params.routine]
+  const { create } = useSets()
+  /** The name being typed for "Save as set", or null when not saving. */
+  const [saving, setSaving] = useState<string | null>(null)
 
   const back = (
     <a href="#/today" className="back-link">
@@ -125,9 +133,10 @@ export function PlanView({
                   <span className="plan-item__reason">{item.reason}</span>
                 </div>
                 <a className="plan-item__swap" href={swap(i)} aria-label={`Swap ${e.name}`}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" />
                   </svg>
+                  <span aria-hidden="true">Swap</span>
                 </a>
               </div>
             </li>
@@ -146,6 +155,40 @@ export function PlanView({
           </svg>
           Start
         </a>
+        {saving === null ? (
+          <button
+            type="button"
+            className="btn btn--outline"
+            onClick={() => setSaving(`${routine.name}, ${dayFormat.format(new Date())}`)}
+          >
+            Save as set
+          </button>
+        ) : (
+          <form
+            className="rename"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const name = saving.trim().slice(0, 60) || routine.name
+              const id = create(name, fromPlan(result.items), `plan:${params.routine}`)
+              setSaving(null)
+              navigate({ name: 'set', id })
+            }}
+          >
+            <label htmlFor="set-name" className="visually-hidden">
+              Name for this set
+            </label>
+            <input
+              id="set-name"
+              value={saving}
+              maxLength={60}
+              autoFocus
+              onChange={(e) => setSaving(e.target.value)}
+            />
+            <button type="submit" className="btn btn--primary">
+              Save
+            </button>
+          </form>
+        )}
         <a className="btn btn--outline" href={reshuffle}>
           Reshuffle
         </a>

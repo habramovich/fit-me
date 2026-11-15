@@ -56,12 +56,39 @@ export type PlanResult =
 const PHASES: Phase[] = ['warmup', 'main', 'cooldown']
 const AMOUNT_WEIGHT: Record<Amount, number> = { none: 0, some: 1, lots: 2 }
 const MIN_CANDIDATES = 3
+const PHASE_WORD: Record<Phase, string> = { warmup: 'warm-up', main: 'main', cooldown: 'cool-down' }
+
+/**
+ * Which exercises are in the plan, by part. An exercise preferred in both warm-up and cool-down
+ * may be used once in each (e.g. cat-cow to open and close a session).
+ */
+class Usage {
+  private parts = new Map<string, Phase[]>()
+  canUse(c: Candidate, phase: Phase): boolean {
+    const uses = this.parts.get(c.exercise.id)
+    if (!uses || uses.length === 0) return true
+    const bookends = c.prefs?.includes('warmup') && c.prefs.includes('cooldown')
+    return Boolean(
+      bookends && phase !== 'main' && !uses.includes(phase) && uses.every((p) => p !== 'main'),
+    )
+  }
+  add(id: string, phase: Phase): void {
+    this.parts.set(id, [...(this.parts.get(id) ?? []), phase])
+  }
+  remove(id: string, phase: Phase): void {
+    const uses = this.parts.get(id) ?? []
+    const i = uses.indexOf(phase)
+    if (i >= 0) uses.splice(i, 1)
+  }
+}
 
 interface Candidate {
   exercise: Exercise
   versionKey: VersionKey
   version: Version
   jitter: number
+  /** The person's preferred parts for this exercise (spec 004 FR-009). */
+  prefs?: Phase[]
 }
 
 // ---------- Eligibility ----------
@@ -125,6 +152,7 @@ function fitsPhase(c: Candidate, phase: Phase, routine: RoutineDef, relaxed = fa
     const isMainTech = routine.mainTechniques.includes(c.exercise.technique)
     if (phase === 'main' ? !isMainTech : isMainTech) return false
   }
+  if (c.prefs) return c.prefs.includes(phase)
   return relaxed || c.exercise.phases.includes(phase)
 }
 
@@ -154,6 +182,11 @@ function score(
   const e = c.exercise
   const reasons: [number, string][] = []
   let s = 1 + c.jitter
+
+  if (c.prefs?.includes(st.phase)) {
+    s += 1.5
+    reasons.push([2.6, `Your ${PHASE_WORD[st.phase]} pick`])
+  }
 
   const tech = AMOUNT_WEIGHT[profile.techniques[e.technique]]
   s += tech
@@ -284,7 +317,14 @@ export function makePlan(input: PlanInput): PlanResult {
     const key = eligible(e, input, routine)
     const jitter = rng() * 1.2 // drawn for every exercise, so the sequence is stable
     if (!key) continue
-    pool.push({ exercise: e, versionKey: key, version: e[key]!, jitter })
+    const prefs = input.profile.phasePrefs[e.id]
+    pool.push({
+      exercise: e,
+      versionKey: key,
+      version: e[key]!,
+      jitter,
+      prefs: prefs && prefs.length > 0 ? prefs : undefined,
+    })
   }
 
   const usable = pool.filter((c) => PHASES.some((p) => fitsPhase(c, p, routine)))
@@ -301,7 +341,7 @@ export function makePlan(input: PlanInput): PlanResult {
   const tolerance = input.minutes <= 10 ? 60 : 120
 
   const picked: (PlanItem & { score: number })[] = []
-  const used = new Set<string>()
+  const used = new Usage()
   const st: PickState = {
     phase: 'warmup',
     newCount: 0,
@@ -314,7 +354,7 @@ export function makePlan(input: PlanInput): PlanResult {
   const bestFor = (phase: Phase, relaxed: boolean) => {
     let best: { c: Candidate; s: Scored } | null = null
     for (const c of usable) {
-      if (used.has(c.exercise.id) || !fitsPhase(c, phase, routine, relaxed)) continue
+      if (!used.canUse(c, phase) || !fitsPhase(c, phase, routine, relaxed)) continue
       const s = score(c, input, routine, st, recentAreas)
       if (!best || s.score > best.s.score) best = { c, s }
     }
@@ -326,7 +366,7 @@ export function makePlan(input: PlanInput): PlanResult {
     const best = bestFor(phase, false) ?? (borrow ? bestFor(phase, true) : null)
     if (!best) return false
     const { c, s } = best
-    used.add(c.exercise.id)
+    used.add(c.exercise.id, phase)
     picked.push({
       exerciseId: c.exercise.id,
       version: c.versionKey,
@@ -414,7 +454,7 @@ export function makePlan(input: PlanInput): PlanResult {
       if (pool.length === 0) break
       const weakest = pool.reduce((a, b) => (b.score < a.score ? b : a))
       picked.splice(picked.indexOf(weakest), 1)
-      used.delete(weakest.exerciseId)
+      used.remove(weakest.exerciseId, weakest.phase)
       rescale()
     }
   }
@@ -430,7 +470,7 @@ export function makePlan(input: PlanInput): PlanResult {
     if (total() > target + tolerance) {
       // That addition overshot and doses can't shrink further: take it back and stop.
       picked.splice(picked.indexOf(added), 1)
-      used.delete(added.exerciseId)
+      used.remove(added.exerciseId, added.phase)
       rescale()
       break
     }
@@ -444,13 +484,13 @@ export function makePlan(input: PlanInput): PlanResult {
     if (!item || count <= 0) continue
     st.phase = item.phase
     const alternatives = usable
-      .filter((c) => !used.has(c.exercise.id) && fitsPhase(c, item.phase, routine, true))
+      .filter((c) => used.canUse(c, item.phase) && fitsPhase(c, item.phase, routine, true))
       .map((c) => ({ c, s: score(c, input, routine, st, recentAreas) }))
       .sort((a, b) => b.s.score - a.s.score || a.c.exercise.id.localeCompare(b.c.exercise.id))
     if (alternatives.length === 0) continue
     const { c, s } = alternatives[(count - 1) % alternatives.length]
-    used.delete(item.exerciseId)
-    used.add(c.exercise.id)
+    used.remove(item.exerciseId, item.phase)
+    used.add(c.exercise.id, item.phase)
     const dose = scaleDose(
       c.version.dose,
       item.seconds / Math.max(1, estimateSeconds(c.version)),

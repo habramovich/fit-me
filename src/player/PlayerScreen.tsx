@@ -27,6 +27,7 @@ export function PlayerScreen({
   routine,
   version,
   plan,
+  setItems,
   profile,
   history,
   uid,
@@ -34,6 +35,8 @@ export function PlayerScreen({
   routine: string
   version?: string
   plan?: PlanParams
+  /** A saved set's items, for routine `set:<id>`. */
+  setItems?: PlayItem[]
   profile: Profile
   history: HistorySummary | null
   uid: string
@@ -41,6 +44,7 @@ export function PlayerScreen({
   const { marks } = useMarks()
   // The routine is fixed when the player opens; later changes (marks, history) don't reshuffle it.
   const [items] = useState<PlayItem[]>(() => {
+    if (routine.startsWith('set:')) return setItems ?? []
     if (routine.startsWith('single:'))
       return singleRoutine(routine.slice(7), (version as VersionKey) ?? 'standard')
     if (routine === 'plan' && plan) {

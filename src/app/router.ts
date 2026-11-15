@@ -1,5 +1,6 @@
 // Minimal hash routing (research R8): #/today, #/library, #/library/<id>, #/plan?…, #/player?…
 import { useEffect, useState } from 'react'
+import type { Phase } from '../exercises/types'
 import type { RoutineId } from '../profile/types'
 
 export interface PlanParams {
@@ -12,7 +13,8 @@ export interface PlanParams {
 
 export type Route =
   | { name: 'today' }
-  | { name: 'library' }
+  | { name: 'library'; addTo?: string; phase?: Phase }
+  | { name: 'set'; id: string }
   | { name: 'exercise'; id: string }
   | { name: 'plan'; plan: PlanParams }
   | { name: 'player'; routine: string; version?: string; plan?: PlanParams }
@@ -22,6 +24,7 @@ export type Route =
   | { name: 'profile' }
   | { name: 'review' }
 
+const PHASES: Phase[] = ['warmup', 'main', 'cooldown']
 const ROUTINE_IDS: RoutineId[] = ['calm', 'desk', 'strength', 'weekend', 'cardio']
 
 function parsePlan(params: URLSearchParams): PlanParams {
@@ -56,7 +59,18 @@ export function parseRoute(hash: string): Route {
   const params = new URLSearchParams(query)
   switch (parts[0]) {
     case 'library':
-      return parts[1] ? { name: 'exercise', id: decodeURIComponent(parts[1]) } : { name: 'library' }
+      if (parts[1]) return { name: 'exercise', id: decodeURIComponent(parts[1]) }
+      return params.get('addTo')
+        ? {
+            name: 'library',
+            addTo: params.get('addTo')!,
+            phase: PHASES.includes(params.get('phase') as Phase)
+              ? (params.get('phase') as Phase)
+              : 'main',
+          }
+        : { name: 'library' }
+    case 'set':
+      return parts[1] ? { name: 'set', id: decodeURIComponent(parts[1]) } : { name: 'today' }
     case 'plan':
       return { name: 'plan', plan: parsePlan(params) }
     case 'player': {
@@ -84,6 +98,12 @@ export function href(route: Route): string {
   switch (route.name) {
     case 'exercise':
       return `#/library/${encodeURIComponent(route.id)}`
+    case 'library':
+      return route.addTo
+        ? `#/library?${new URLSearchParams({ addTo: route.addTo, phase: route.phase ?? 'main' })}`
+        : '#/library'
+    case 'set':
+      return `#/set/${encodeURIComponent(route.id)}`
     case 'plan':
       return `#/plan?${planQuery(route.plan).toString()}`
     case 'player': {
@@ -103,10 +123,26 @@ export function navigate(route: Route): void {
   window.location.hash = href(route)
 }
 
+// In-app history, so Back can return to the previous screen (spec 004 FR-010).
+// A hash change to the entry before the top is a "back"; anything else is a new screen.
+export function updateTrail(trail: string[], hash: string): string[] {
+  if (trail.length >= 2 && trail[trail.length - 2] === hash) return trail.slice(0, -1)
+  if (trail[trail.length - 1] === hash) return trail
+  return [...trail, hash].slice(-50)
+}
+let trail: string[] = typeof window === 'undefined' ? [] : [window.location.hash]
+
+/** Back to the previous in-app screen, or to `fallback` when the app was opened here. */
+export function goBack(fallback: Route): void {
+  if (trail.length >= 2) window.history.back()
+  else navigate(fallback)
+}
+
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash))
   useEffect(() => {
     const update = () => {
+      trail = updateTrail(trail, window.location.hash)
       setRoute(parseRoute(window.location.hash))
       window.scrollTo(0, 0)
     }
