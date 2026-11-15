@@ -50,6 +50,10 @@ export const BODY_AREA_LABEL: Record<BodyArea, string> = {
 }
 
 export type Equipment = 'none' | 'mat' | 'chair' | 'wall' | 'band'
+export type Position = 'standing' | 'seated' | 'kneeling' | 'lying'
+export type Intensity = 'gentle' | 'moderate' | 'vigorous'
+/** Extra traits the planner looks for. */
+export type Tag = 'breathing' | 'balance' | 'boneLoading'
 export type Level = 'beginner' | 'intermediate' | 'advanced'
 export type Phase = 'warmup' | 'main' | 'cooldown'
 export type VersionKey = 'easier' | 'standard' | 'harder'
@@ -158,6 +162,10 @@ export interface Version {
   secondsPerRep?: number
   /** Cardio: no jumping. */
   lowImpact?: boolean
+  /** When this version is done in a different position, e.g. seated cat-cow. */
+  position?: Position
+  /** Equipment for this version if different from the exercise's. */
+  equipment?: Equipment[]
 }
 
 export interface Exercise {
@@ -169,6 +177,9 @@ export interface Exercise {
   equipment: Equipment[]
   level: Level
   phases: Phase[]
+  position: Position
+  intensity: Intensity
+  tags: Tag[]
   standard: Version
   easier?: Version
   harder?: Version

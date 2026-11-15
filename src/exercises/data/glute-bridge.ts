@@ -55,6 +55,9 @@ export const gluteBridge: Exercise = {
   equipment: ['mat'],
   level: 'beginner',
   phases: ['main'],
+  position: 'lying',
+  intensity: 'moderate',
+  tags: [],
   batch: 1,
   standard: {
     dose: { kind: 'reps', reps: 12, range: [10, 15], sets: 2, perSide: false },

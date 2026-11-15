@@ -57,6 +57,9 @@ export const birdDog: Exercise = {
   equipment: ['mat'],
   level: 'beginner',
   phases: ['main'],
+  position: 'kneeling',
+  intensity: 'moderate',
+  tags: ['balance'],
   batch: 1,
   standard: {
     dose: { kind: 'reps', reps: 8, range: [6, 10], sets: 2, perSide: true },

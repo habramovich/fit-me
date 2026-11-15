@@ -25,6 +25,22 @@ describe('router', () => {
     })
   })
 
+  it('parses plan params with swaps, clamping bad values', () => {
+    expect(parseRoute('#/plan?r=desk&m=5&s=2&w=1.2,3.1')).toEqual({
+      name: 'plan',
+      plan: { routine: 'desk', minutes: 5, shuffle: 2, swaps: { 1: 2, 3: 1 } },
+    })
+    expect(parseRoute('#/plan?r=nope&m=999')).toEqual({
+      name: 'plan',
+      plan: { routine: 'calm', minutes: 90, shuffle: 0, swaps: {} },
+    })
+  })
+
+  it('parses setup steps', () => {
+    expect(parseRoute('#/setup/3')).toEqual({ name: 'setup', step: 3 })
+    expect(parseRoute('#/setup/9')).toEqual({ name: 'setup', step: 6 })
+  })
+
   it('round-trips through href', () => {
     const routes: Route[] = [
       { name: 'today' },
@@ -33,6 +49,13 @@ describe('router', () => {
       { name: 'player', routine: 'single:bird-dog', version: 'harder' },
       { name: 'profile' },
       { name: 'review' },
+      { name: 'setup', step: 2 },
+      { name: 'plan', plan: { routine: 'strength', minutes: 20, shuffle: 3, swaps: { 0: 1 } } },
+      {
+        name: 'player',
+        routine: 'plan',
+        plan: { routine: 'calm', minutes: 15, shuffle: 0, swaps: {} },
+      },
     ]
     for (const r of routes) {
       const parsed = parseRoute(href(r))

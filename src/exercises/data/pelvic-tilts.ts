@@ -42,6 +42,9 @@ export const pelvicTilts: Exercise = {
   equipment: ['mat'],
   level: 'beginner',
   phases: ['warmup'],
+  position: 'lying',
+  intensity: 'gentle',
+  tags: ['breathing'],
   batch: 1,
   standard: {
     dose: { kind: 'reps', reps: 10, range: [8, 15], sets: 1, perSide: false },

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import type { Session } from './auth/useSession'
+import type { UserRecord } from './data/repo/users'
 
 const mockSession = vi.hoisted(() => ({ current: null as unknown as Session }))
 const signIn = vi.hoisted(() => ({
@@ -18,6 +19,7 @@ vi.mock('./data/repo/sessions', () => ({
   startSession: () => 's1',
   recordItems: vi.fn(),
   finishSession: vi.fn(),
+  recentSessions: async () => [],
 }))
 
 const user = { uid: 'u1', email: 'ann@example.com', displayName: 'Ann' }
@@ -67,23 +69,31 @@ describe('App screens', () => {
     expect(signIn.signOutUser).toHaveBeenCalledOnce()
   })
 
-  const record = {
+  const record: UserRecord = {
     schemaVersion: 1,
     displayName: 'Ann',
     email: user.email,
     lastSignInAt: new Date('2026-11-14T09:30:00'),
+    profile: { setupDone: true, goals: ['mobility'] },
   }
 
-  it('greets an invited person by name on Today, with the tab bar and a Start link', () => {
+  it('greets an invited person by name on Today, with the tab bar and a Plan link', () => {
     window.location.hash = '#/today'
     setSession({ state: { status: 'invited', user }, record })
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Hi, Ann' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Start/ })).toHaveAttribute(
-      'href',
-      '#/player?routine=sample',
+    expect(screen.getByRole('link', { name: /^Plan my/ }).getAttribute('href')).toMatch(
+      /^#\/plan\?r=/,
     )
+  })
+
+  it('starts first-run setup when the profile is not set up', () => {
+    window.location.hash = '#/today'
+    setSession({ state: { status: 'invited', user }, record: { ...record, profile: null } })
+    render(<App />)
+    expect(screen.getByText(/step 1 of 6/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'About you' })).toBeInTheDocument()
   })
 
   it('shows the last sign-in time and Sign out on Profile', async () => {
@@ -97,7 +107,10 @@ describe('App screens', () => {
 
   it('falls back to email when there is no display name', () => {
     window.location.hash = '#/today'
-    setSession({ state: { status: 'invited', user: { ...user, displayName: null } } })
+    setSession({
+      state: { status: 'invited', user: { ...user, displayName: null } },
+      record: { ...record, displayName: null },
+    })
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Hi, ann@example.com' })).toBeInTheDocument()
   })
