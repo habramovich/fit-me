@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { href } from '../app/router'
+import { href, navigate } from '../app/router'
+import { useSets } from '../app/setsContext'
+import { setMinutes } from '../sets/minutes'
 import { ROUTINES, ROUTINE_ORDER, routineForTime } from '../planner/routines'
 import type { Profile, RoutineId } from '../profile/types'
 
@@ -13,11 +15,12 @@ const MINUTES = [5, 10, 15, 20, 30, 45]
 export function Today({ name, profile }: { name: string; profile: Profile }) {
   const [now] = useState(() => new Date())
   const [routine, setRoutine] = useState<RoutineId>(() => routineForTime(now))
-  const [minutes, setMinutes] = useState(() => profile.routineMinutes[routineForTime(now)])
+  const [minutes, setChosenMinutes] = useState(() => profile.routineMinutes[routineForTime(now)])
+  const { sets, create } = useSets()
 
   const pickRoutine = (id: RoutineId) => {
     setRoutine(id)
-    setMinutes(profile.routineMinutes[id])
+    setChosenMinutes(profile.routineMinutes[id])
   }
   const minuteOptions = [...new Set([...MINUTES, minutes])].sort((a, b) => a - b)
 
@@ -33,6 +36,24 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
           <strong>Finish your profile</strong>
           <span className="muted small">So sessions fit your goals and focus areas.</span>
         </a>
+      )}
+
+      {sets && sets.length > 0 && (
+        <section className="stack-sm" aria-labelledby="sets-h">
+          <h2 id="sets-h">Your sets</h2>
+          <ul className="set-cards">
+            {sets.map((s) => (
+              <li key={s.id}>
+                <a className="set-card" href={href({ name: 'set', id: s.id })}>
+                  <span className="set-card__name">{s.name}</span>
+                  <span className="muted small">
+                    {s.items.length} exercises · about {setMinutes(s.items)} min
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="stack" aria-labelledby="routine-h">
@@ -62,7 +83,7 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
               type="button"
               className={minutes === m ? 'chip chip--on' : 'chip'}
               aria-pressed={minutes === m}
-              onClick={() => setMinutes(m)}
+              onClick={() => setChosenMinutes(m)}
             >
               {m} min
             </button>
@@ -79,6 +100,16 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
       <a className="btn btn--link" href={href({ name: 'player', routine: 'sample' })}>
         Or play your eight favourites
       </a>
+      <button
+        type="button"
+        className="btn btn--link"
+        onClick={() => {
+          const id = create('My set', [], 'manual')
+          navigate({ name: 'set', id })
+        }}
+      >
+        Build a set from scratch
+      </button>
     </main>
   )
 }

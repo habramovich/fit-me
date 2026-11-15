@@ -2,6 +2,7 @@ import type { SessionUser } from '../auth/session'
 import type { UserRecord } from '../data/repo/users'
 import { useHistory } from '../planner/usePlan'
 import { PlayerScreen } from '../player/PlayerScreen'
+import { SetPlayer } from '../player/SetPlayer'
 import { withDefaults } from '../profile/types'
 import { ExerciseDetail } from '../screens/ExerciseDetail'
 import { Library } from '../screens/Library'
@@ -11,8 +12,10 @@ import { Profile } from '../screens/Profile'
 import { Review } from '../screens/Review'
 import { reviewEnabled } from '../screens/reviewEnabled'
 import { Setup } from '../screens/Setup'
+import { SetView } from '../screens/SetView'
 import { Today } from '../screens/Today'
 import { MarksProvider } from './marks'
+import { SetsProvider } from './sets'
 import { useRoute } from './router'
 import { TabBar } from './TabBar'
 import './app.css'
@@ -36,15 +39,30 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
       screen = <Today name={name} profile={profile} />
       break
     case 'library':
-      screen = <Library />
+      screen = <Library addTo={effective.addTo} phase={effective.phase} />
       break
     case 'exercise':
-      screen = <ExerciseDetail id={effective.id} />
+      screen = <ExerciseDetail id={effective.id} uid={user.uid} profile={profile} />
       break
     case 'plan':
       screen = <PlanView params={effective.plan} profile={profile} history={history} />
       break
+    case 'set':
+      screen = <SetView id={effective.id} />
+      break
     case 'player':
+      if (effective.routine.startsWith('set:')) {
+        screen = (
+          <SetPlayer
+            key={effective.routine}
+            id={effective.routine.slice(4)}
+            profile={profile}
+            history={history}
+            uid={user.uid}
+          />
+        )
+        break
+      }
       // Keyed so a new routine starts a fresh player.
       screen = (
         <PlayerScreen
@@ -88,10 +106,12 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
   const fullScreen = effective.name === 'player' || effective.name === 'setup'
   return (
     <MarksProvider uid={user.uid}>
-      <div className={fullScreen ? 'shell shell--full' : 'shell'}>
-        {screen}
-        {!fullScreen && <TabBar route={effective} />}
-      </div>
+      <SetsProvider uid={user.uid}>
+        <div className={fullScreen ? 'shell shell--full' : 'shell'}>
+          {screen}
+          {!fullScreen && <TabBar route={effective} />}
+        </div>
+      </SetsProvider>
     </MarksProvider>
   )
 }

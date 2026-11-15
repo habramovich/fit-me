@@ -15,6 +15,16 @@ vi.mock('./auth/useSession', () => ({ useSession: () => mockSession.current }))
 vi.mock('./auth/signIn', () => signIn)
 // Firestore listeners are not under test here; marks start empty.
 vi.mock('./data/repo/marks', () => ({ watchMarks: () => () => {}, setMark: vi.fn(async () => {}) }))
+vi.mock('./data/repo/sets', () => ({
+  watchSets: (_uid: string, onData: (s: unknown[]) => void) => {
+    onData([])
+    return () => {}
+  },
+  createSet: () => 'new',
+  saveSetItems: vi.fn(),
+  renameSet: vi.fn(),
+  deleteSet: vi.fn(),
+}))
 vi.mock('./data/repo/sessions', () => ({
   startSession: () => 's1',
   recordItems: vi.fn(),

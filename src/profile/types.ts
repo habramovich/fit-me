@@ -1,5 +1,5 @@
 // Profile model. See specs/003-profile-planner/data-model.md.
-import type { BodyArea, Equipment, Level, Technique } from '../exercises/types'
+import type { BodyArea, Equipment, Level, Phase, Technique } from '../exercises/types'
 
 export type AgeRange = 'u30' | '30s' | '40s' | '50s' | '60s' | '70plus'
 export type Sex = 'woman' | 'man'
@@ -33,6 +33,8 @@ export interface Profile {
   equipment: HomeEquipment[]
   tryNew: TryNew
   routineMinutes: Record<RoutineId, number>
+  /** Parts the person likes each exercise in, by exercise id (004). Missing = no preference. */
+  phasePrefs: Record<string, Phase[]>
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -49,6 +51,7 @@ export const DEFAULT_PROFILE: Profile = {
   equipment: ['mat', 'chair', 'wall'],
   tryNew: 'mix',
   routineMinutes: { calm: 15, desk: 5, strength: 20, weekend: 35, cardio: 15 },
+  phasePrefs: {},
 }
 
 /** Fills missing fields with defaults (older or partial records). */
@@ -59,6 +62,7 @@ export function withDefaults(stored: Partial<Profile> | null | undefined): Profi
     ...p,
     techniques: { ...DEFAULT_PROFILE.techniques, ...(p.techniques ?? {}) },
     routineMinutes: { ...DEFAULT_PROFILE.routineMinutes, ...(p.routineMinutes ?? {}) },
+    phasePrefs: { ...(p.phasePrefs ?? {}) },
   }
 }
 

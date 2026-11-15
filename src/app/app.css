@@ -534,6 +534,212 @@
   stroke-linejoin: round;
 }
 
+.plan-item__swap {
+  width: auto;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link--button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.rename {
+  display: flex;
+  gap: 8px;
+}
+
+.rename input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: var(--radius-control);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  font-size: 1rem;
+}
+
+/* Saved sets */
+.set-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.set-card {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.set-card:disabled {
+  opacity: 0.5;
+}
+
+.set-card--new {
+  border-style: dashed;
+}
+
+.set-card__name {
+  font-weight: 600;
+}
+
+.set-part {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.set-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.set-empty {
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.set-row__handle {
+  flex: none;
+  width: 36px;
+  height: var(--tap);
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.set-row__handle svg,
+.mini-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.set-row__figure {
+  flex: none;
+  width: 56px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.set-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.set-row__name {
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.set-row__actions {
+  flex: none;
+  display: flex;
+}
+
+.mini-btn {
+  width: 36px;
+  height: var(--tap);
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-indicator {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.drag-ghost {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--text);
+  color: #fff;
+  font-weight: 600;
+  pointer-events: none;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 25%);
+}
+
+.notice--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ex-card__add {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* Setup + profile controls */
 .card--list {
   padding: 4px 12px;

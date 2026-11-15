@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useMarks } from '../app/marksContext'
-import { href } from '../app/router'
+import { href, navigate } from '../app/router'
+import { useSets } from '../app/setsContext'
+import type { Phase } from '../exercises/types'
+import { addItem } from '../sets/edit'
 import { allExercises, formatDose, formatRange, searchExercises } from '../exercises'
 import { TECHNIQUES, TECHNIQUE_LABEL, type Technique } from '../exercises/types'
 import { Figure } from '../figure/Figure'
@@ -8,8 +11,14 @@ import { Heart, TechniqueTag } from './parts'
 
 type Filter = 'all' | 'favourites' | Technique
 
-export function Library() {
+const PHASE_WORD: Record<Phase, string> = { warmup: 'warm-up', main: 'main', cooldown: 'cool-down' }
+
+/** The Library; with `addTo`, each card adds the exercise to that set (spec 004 FR-006). */
+export function Library({ addTo, phase = 'main' }: { addTo?: string; phase?: Phase } = {}) {
   const { marks, setMark } = useMarks()
+  const { sets, saveItems } = useSets()
+  const target = addTo ? sets?.find((s) => s.id === addTo) : undefined
+  const [addedCount, setAddedCount] = useState<Record<string, number>>({})
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
 
@@ -27,6 +36,20 @@ export function Library() {
 
   return (
     <main className="screen">
+      {target && (
+        <div className="card notice notice--row" role="status">
+          <span>
+            Adding to <strong>{target.name}</strong> · {PHASE_WORD[phase]}
+          </span>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => navigate({ name: 'set', id: target.id })}
+          >
+            Done
+          </button>
+        </div>
+      )}
       <header className="row-between">
         <h1>Library</h1>
         <span className="muted" aria-live="polite">
@@ -91,19 +114,42 @@ export function Library() {
                     <span className="muted"> · {formatRange(e.standard.dose)}</span>
                   </span>
                 </a>
-                <button
-                  type="button"
-                  className="ex-card__fav"
-                  aria-pressed={mark === 'favourite'}
-                  aria-label={
-                    mark === 'favourite'
-                      ? `Remove ${e.name} from favourites`
-                      : `Add ${e.name} to favourites`
-                  }
-                  onClick={() => setMark(e.id, mark === 'favourite' ? null : 'favourite')}
-                >
-                  <Heart filled={mark === 'favourite'} />
-                </button>
+                {target ? (
+                  <button
+                    type="button"
+                    className="ex-card__add"
+                    aria-label={`Add ${e.name} to ${target.name}`}
+                    onClick={() => {
+                      const latest = sets?.find((s) => s.id === target.id) ?? target
+                      saveItems(
+                        target.id,
+                        addItem(latest.items, {
+                          exerciseId: e.id,
+                          version: 'standard',
+                          phase,
+                          dose: e.standard.dose,
+                        }),
+                      )
+                      setAddedCount((c) => ({ ...c, [e.id]: (c[e.id] ?? 0) + 1 }))
+                    }}
+                  >
+                    {addedCount[e.id] ? `Added ×${addedCount[e.id]}` : '+ Add'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="ex-card__fav"
+                    aria-pressed={mark === 'favourite'}
+                    aria-label={
+                      mark === 'favourite'
+                        ? `Remove ${e.name} from favourites`
+                        : `Add ${e.name} to favourites`
+                    }
+                    onClick={() => setMark(e.id, mark === 'favourite' ? null : 'favourite')}
+                  >
+                    <Heart filled={mark === 'favourite'} />
+                  </button>
+                )}
               </li>
             )
           })}

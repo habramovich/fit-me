@@ -50,7 +50,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 function activeTab(route: Route): Tab | null {
   if (route.name === 'exercise') return 'library'
-  if (route.name === 'plan') return 'today'
+  if (route.name === 'plan' || route.name === 'set') return 'today'
   if (route.name === 'player' || route.name === 'review' || route.name === 'setup') return null
   return route.name
 }

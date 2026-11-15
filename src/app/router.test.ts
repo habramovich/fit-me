@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { href, parseRoute, type Route } from './router'
+import { href, parseRoute, updateTrail, type Route } from './router'
+
+describe('in-app trail', () => {
+  it('pushes new screens and pops on back', () => {
+    let t = ['#/today']
+    t = updateTrail(t, '#/plan?r=calm')
+    t = updateTrail(t, '#/library/cat-cow')
+    expect(t).toEqual(['#/today', '#/plan?r=calm', '#/library/cat-cow'])
+    t = updateTrail(t, '#/plan?r=calm') // browser back
+    expect(t).toEqual(['#/today', '#/plan?r=calm'])
+    t = updateTrail(t, '#/plan?r=calm') // same hash again
+    expect(t).toEqual(['#/today', '#/plan?r=calm'])
+  })
+})
 
 describe('router', () => {
   it('defaults to today', () => {
@@ -36,6 +49,16 @@ describe('router', () => {
     })
   })
 
+  it('parses sets and the library add mode', () => {
+    expect(parseRoute('#/set/abc')).toEqual({ name: 'set', id: 'abc' })
+    expect(parseRoute('#/library?addTo=abc&phase=cooldown')).toEqual({
+      name: 'library',
+      addTo: 'abc',
+      phase: 'cooldown',
+    })
+    expect(parseRoute('#/library?addTo=abc&phase=nope')).toMatchObject({ phase: 'main' })
+  })
+
   it('parses setup steps', () => {
     expect(parseRoute('#/setup/3')).toEqual({ name: 'setup', step: 3 })
     expect(parseRoute('#/setup/9')).toEqual({ name: 'setup', step: 6 })
@@ -50,6 +73,8 @@ describe('router', () => {
       { name: 'profile' },
       { name: 'review' },
       { name: 'setup', step: 2 },
+      { name: 'set', id: 'abc' },
+      { name: 'library', addTo: 'abc', phase: 'warmup' },
       { name: 'plan', plan: { routine: 'strength', minutes: 20, shuffle: 3, swaps: { 0: 1 } } },
       {
         name: 'player',
