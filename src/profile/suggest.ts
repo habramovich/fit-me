@@ -32,11 +32,14 @@ const GOAL_WEIGHTS: Record<Goal, Partial<Record<Technique, number>>> = {
  */
 export function suggestTechniques(goals: Goal[]): Profile['techniques'] {
   const score = Object.fromEntries(TECHNIQUES.map((t) => [t, 0])) as Record<Technique, number>
-  for (const g of goals) for (const [t, w] of Object.entries(GOAL_WEIGHTS[g])) score[t as Technique] += w
+  for (const g of goals)
+    for (const [t, w] of Object.entries(GOAL_WEIGHTS[g])) score[t as Technique] += w
   // Ties keep the TECHNIQUES order.
   const top = [...TECHNIQUES]
     .filter((t) => score[t] > 0)
     .sort((a, b) => score[b] - score[a])
     .slice(0, 2)
-  return Object.fromEntries(TECHNIQUES.map((t) => [t, top.includes(t) ? 'lots' : 'some'])) as Profile['techniques']
+  return Object.fromEntries(
+    TECHNIQUES.map((t) => [t, top.includes(t) ? 'lots' : 'some']),
+  ) as Profile['techniques']
 }
