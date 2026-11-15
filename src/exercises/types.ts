@@ -151,6 +151,11 @@ export interface FigureSpec {
   breath?: Breath[]
   /** Screen-reader description of the whole movement. */
   alt: string
+  /**
+   * Doodle style, side view: where the face's nose points in keyframe 0. Set only when the
+   * automatic guess (from how the joints bend) looks the wrong way in the doodle renders.
+   */
+  nose?: 'left' | 'right' | 'up' | 'down'
 }
 
 export interface Version {

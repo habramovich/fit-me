@@ -1,5 +1,6 @@
 import type { SessionUser } from '../auth/session'
 import type { UserRecord } from '../data/repo/users'
+import { FigureStyleContext } from '../figure/style'
 import { useHistory } from '../planner/usePlan'
 import { PlayerScreen } from '../player/PlayerScreen'
 import { SetPlayer } from '../player/SetPlayer'
@@ -103,10 +104,12 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
   return (
     <MarksProvider uid={user.uid}>
       <SetsProvider uid={user.uid}>
-        <div className={fullScreen ? 'shell shell--full' : 'shell'}>
-          {screen}
-          {!fullScreen && <TabBar route={effective} />}
-        </div>
+        <FigureStyleContext.Provider value={profile.figureStyle}>
+          <div className={fullScreen ? 'shell shell--full' : 'shell'}>
+            {screen}
+            {!fullScreen && <TabBar route={effective} />}
+          </div>
+        </FigureStyleContext.Provider>
       </SetsProvider>
     </MarksProvider>
   )

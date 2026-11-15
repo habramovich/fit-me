@@ -145,7 +145,7 @@ export interface Segment {
   y2: number
 }
 
-/** Stroke widths in figure units (box is 250 x 180). */
+/** Classic: stroke widths in figure units (box is 250 x 180). */
 export const WIDTH: Record<LimbPart | 'torso' | 'neck', number> = {
   torso: 30,
   neck: 11,
@@ -154,6 +154,138 @@ export const WIDTH: Record<LimbPart | 'torso' | 'neck', number> = {
   thigh: 17,
   shin: 12,
   foot: 7,
+}
+
+// Doodle: a line drawing (see specs/007-figure-style/research.md).
+
+/** Doodle head radius. */
+export const HEAD_R = 14
+
+/** Half-widths of the doodle shirt at the collar and the hem; side view about as wide as the head. */
+const SHIRT = { side: [12, 13], front: [17, 12] } as const
+/** How far the shirt reaches up from the shoulder point toward the head. */
+const COLLAR = 4
+
+const unit = (a: Point, b: Point): Point => {
+  const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
+  return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]
+}
+
+/** Sine of the turn at b when walking a → b → c (positive = clockwise on screen). */
+function turn(a: Point, b: Point, c: Point): number {
+  const u = unit(a, b)
+  const v = unit(b, c)
+  return u[0] * v[1] - u[1] * v[0]
+}
+
+/**
+ * Which way a side-view figure faces, read from how its joints bend: knees fold one way, ankles
+ * and elbows the other. +1 = standing it would face left (the default), -1 = right. Taken over
+ * all key poses, because a figure never turns round mid-movement.
+ */
+export function sideFacing(keyframes: Pose[]): 1 | -1 {
+  let votes = 0
+  for (const p of keyframes)
+    for (const l of [p.N, p.F])
+      votes += turn(l.kn, l.an, l.to) - turn(p.hip, l.kn, l.an) + 0.5 * turn(p.sh, l.el, l.wr)
+  return votes >= 0 ? 1 : -1
+}
+
+const NOSE: Record<NonNullable<FigureSpec['nose']>, Point> = {
+  left: [-1, 0],
+  right: [1, 0],
+  up: [0, -1],
+  down: [0, 1],
+}
+
+/**
+ * The facing to draw a figure with: from `spec.nose` (where the nose points in keyframe 0) when
+ * given, otherwise guessed by `sideFacing`. Front view always faces the viewer (1).
+ */
+export function facingFor(spec: FigureSpec): 1 | -1 {
+  if (spec.view === 'front') return 1
+  if (!spec.nose) return sideFacing(spec.keyframes)
+  const k = spec.keyframes[0]
+  const up = unit(k.sh, k.head)
+  const [dx, dy] = NOSE[spec.nose]
+  // The face's "across" for facing f is f·(up.y, −up.x); pick f so it points along the nose.
+  return up[1] * dx - up[0] * dy >= 0 ? 1 : -1
+}
+
+export interface Face {
+  /** One eye in side view, two in front view. */
+  eyes: Point[]
+  /** The smile, as an SVG path. */
+  mouth: string
+  /** Side view only: centre of the nose bump on the edge of the head. */
+  nose?: Point
+}
+
+/** Eyes, smile and nose, turned with the head (its "up" runs from the shoulders to the head). */
+export function face(pose: Pose, view: 'side' | 'front', facing: 1 | -1 = 1): Face {
+  const up = unit(pose.sh, pose.head)
+  // Front view: "across" is the viewer's right. Side view: it is the way the figure faces.
+  const across: Point = view === 'front' ? [-up[1], up[0]] : [facing * up[1], -facing * up[0]]
+  const at = (a: number, u: number): Point => [
+    pose.head[0] + (across[0] * a + up[0] * u) * HEAD_R,
+    pose.head[1] + (across[1] * a + up[1] * u) * HEAD_R,
+  ]
+  if (view === 'front') {
+    return {
+      eyes: [at(-0.36, 0.1), at(0.36, 0.1)],
+      mouth: `M${fmt(at(-0.4, -0.3))} Q${fmt(at(0, -0.74))} ${fmt(at(0.4, -0.3))}`,
+    }
+  }
+  return {
+    eyes: [at(0.44, 0.14)],
+    mouth: `M${fmt(at(0.8, -0.36))} Q${fmt(at(0.58, -0.64))} ${fmt(at(0.28, -0.48))}`,
+    nose: at(1.04, -0.04),
+  }
+}
+
+/** Where the neck meets the shirt: a little above the shoulder point, toward the head. */
+export function collar(pose: Pose): Point {
+  const up = unit(pose.sh, pose.head)
+  return [pose.sh[0] + up[0] * COLLAR, pose.sh[1] + up[1] * COLLAR]
+}
+
+/** The shirt: a closed outline around the spine curve from the collar to the hips. */
+export function torsoOutline(pose: Required<Pose>, view: 'side' | 'front'): string {
+  const [top, hem] = SHIRT[view]
+  const steps = 8
+  const spine: Point[] = [collar(pose)]
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    spine.push([
+      (1 - t) ** 2 * pose.sh[0] + 2 * (1 - t) * t * pose.ctrl[0] + t * t * pose.hip[0],
+      (1 - t) ** 2 * pose.sh[1] + 2 * (1 - t) * t * pose.ctrl[1] + t * t * pose.hip[1],
+    ])
+  }
+  const left: Point[] = []
+  const right: Point[] = []
+  spine.forEach((p, i) => {
+    const d = unit(spine[Math.max(0, i - 1)], spine[Math.min(spine.length - 1, i + 1)])
+    const w = top + ((hem - top) * i) / (spine.length - 1)
+    left.push([p[0] - d[1] * w, p[1] + d[0] * w])
+    right.push([p[0] + d[1] * w, p[1] - d[0] * w])
+  })
+  return `M${[...left, ...right.reverse()].map(fmt).join(' L')} Z`
+}
+
+/** A limb as one stroke through its joints, each bone bowed slightly so it reads as hand-drawn. */
+export function limbPath(points: Point[]): string {
+  let d = `M${fmt(points[0])}`
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]
+    const b = points[i]
+    const bow = (i % 2 ? 1 : -1) * 0.04
+    const c: Point = [
+      (a[0] + b[0]) / 2 - (b[1] - a[1]) * bow,
+      (a[1] + b[1]) / 2 + (b[0] - a[0]) * bow,
+    ]
+    d += ` Q${fmt(c)} ${fmt(b)}`
+  }
+  return d
 }
 
 /** Front view: half the shoulder and hip widths, so limbs start beside the torso. */

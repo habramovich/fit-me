@@ -3,10 +3,15 @@ import type { FigureSpec, Limbs, Pose } from '../exercises/types'
 import {
   arrowPaths,
   breathFor,
+  face,
+  facingFor,
   interpolatePose,
   labelFor,
+  limbPath,
   limbSegments,
   phaseAt,
+  sideFacing,
+  torsoOutline,
   ringDot,
   ringPaths,
   smoothstep,
@@ -141,6 +146,97 @@ describe('ring', () => {
     const { back, front } = ringPaths(ring)
     expect(back).toBe('M130.0 100.0 A30 10 0 0 0 70.0 100.0')
     expect(front).toBe('M70.0 100.0 A30 10 0 0 0 130.0 100.0')
+  })
+})
+
+// Doodle (007)
+type P = [number, number]
+const joints = (el: P, wr: P, kn: P, an: P, to: P): Limbs => ({ el, wr, kn, an, to })
+// Standing, knees bent forward (to the left), toes pointing left: a figure facing left.
+const standing: Pose = {
+  head: [97, 27],
+  sh: [100, 50],
+  hip: [102, 100],
+  N: joints([100, 76], [98, 100], [96, 126], [100, 150], [88, 151]),
+  F: joints([102, 76], [100, 100], [98, 126], [102, 150], [90, 151]),
+}
+const mirror = (p: Pose): Pose => {
+  const m = (q: P): P => [250 - q[0], q[1]]
+  const ml = (l: Limbs) => joints(m(l.el), m(l.wr), m(l.kn), m(l.an), m(l.to))
+  return { head: m(p.head), sh: m(p.sh), hip: m(p.hip), N: ml(p.N), F: ml(p.F) }
+}
+// Lying on the back, head on the left.
+const lying: Pose = {
+  head: [40, 138],
+  sh: [64, 137],
+  hip: [122, 137],
+  N: joints([90, 145], [116, 147], [150, 112], [166, 146], [182, 148]),
+  F: joints([88, 143], [114, 145], [152, 112], [168, 146], [184, 148]),
+}
+const sideSpec = (kf: Pose, nose?: FigureSpec['nose']): FigureSpec => ({
+  view: 'side',
+  keyframes: [kf],
+  arrows: [],
+  labels: [],
+  alt: '',
+  nose,
+})
+
+describe('doodle facing', () => {
+  it('guesses left for a standing figure facing left, and right for its mirror', () => {
+    expect(sideFacing([standing])).toBe(1)
+    expect(sideFacing([mirror(standing)])).toBe(-1)
+  })
+
+  it('puts the side-view eye and nose on the facing side', () => {
+    const left = face(standing, 'side', 1)
+    expect(left.nose![0]).toBeLessThan(standing.head[0])
+    expect(left.eyes[0][0]).toBeLessThan(standing.head[0])
+    expect(face(standing, 'side', -1).nose![0]).toBeGreaterThan(standing.head[0])
+  })
+
+  it('honours each nose override', () => {
+    for (const [pose, nose, axis, sign] of [
+      [lying, 'up', 1, -1],
+      [lying, 'down', 1, 1],
+      [standing, 'left', 0, -1],
+      [standing, 'right', 0, 1],
+    ] as const) {
+      const n = face(pose, 'side', facingFor(sideSpec(pose, nose))).nose!
+      expect(Math.sign(n[axis] - pose.head[axis])).toBe(sign)
+    }
+  })
+
+  it('uses the guess without an override, and faces the viewer in front view', () => {
+    expect(facingFor(sideSpec(standing))).toBe(sideFacing([standing]))
+    expect(facingFor({ ...sideSpec(standing, 'right'), view: 'front' })).toBe(1)
+  })
+
+  it('draws two level eyes above the smile in front view (head upright)', () => {
+    const f = face({ ...standing, head: [100, 27] }, 'front')
+    expect(f.eyes).toHaveLength(2)
+    expect(f.eyes[0][1]).toBeCloseTo(f.eyes[1][1])
+    expect(f.nose).toBeUndefined()
+    expect(Number(f.mouth.split(' ')[1])).toBeGreaterThan(f.eyes[0][1])
+  })
+})
+
+describe('doodle outlines', () => {
+  it('draws the shirt as a closed path', () => {
+    const d = torsoOutline(interpolatePose(standing, standing, 0), 'side')
+    expect(d.startsWith('M')).toBe(true)
+    expect(d.endsWith('Z')).toBe(true)
+  })
+
+  it('draws a limb through every joint', () => {
+    const d = limbPath([
+      [0, 0],
+      [10, 20],
+      [30, 25],
+    ])
+    expect(d.startsWith('M0.0 0.0')).toBe(true)
+    expect(d).toContain(' 10.0 20.0')
+    expect(d.endsWith(' 30.0 25.0')).toBe(true)
   })
 })
 

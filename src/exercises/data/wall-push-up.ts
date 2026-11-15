@@ -26,6 +26,8 @@ const figure: FigureSpec = {
   arrows: [[{ p: [110, 22], q: [86, 28], bend: 0 }]],
   labels: ['Bend the elbows, chest toward the wall', 'Push back to straight arms'],
   breath: ['in', 'out'],
+  // The feet point back (heels lifted), which fools the facing guess.
+  nose: 'left',
   alt: 'Leaning on a wall with straight arms, body straight from head to heels; breathing in, the elbows bend and the chest comes toward the wall; breathing out, the arms push back to straight.',
 }
 
