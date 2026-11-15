@@ -20,6 +20,17 @@ import { treePose } from './data/tree-pose'
 import { wallAngels } from './data/wall-angels'
 import { wallPushUp } from './data/wall-push-up'
 import { waveHandsLikeClouds } from './data/wave-hands-like-clouds'
+// Batch 3: low-impact cardio and tai chi
+import { marchInPlace } from './data/march-in-place'
+import { stepJacks } from './data/step-jacks'
+import { shadowBoxing } from './data/shadow-boxing'
+import { stepTouch } from './data/step-touch'
+import { crossBodyKneeLifts } from './data/cross-body-knee-lifts'
+import { heelFlicks } from './data/heel-flicks'
+import { partingWildHorsesMane } from './data/parting-wild-horses-mane'
+import { brushKneeAndPush } from './data/brush-knee-and-push'
+import { goldenRooster } from './data/golden-rooster'
+import { repulseMonkey } from './data/repulse-monkey'
 import {
   BODY_AREA_LABEL,
   TECHNIQUE_LABEL,
@@ -51,6 +62,16 @@ export const allExercises: readonly Exercise[] = [
   sitToStand,
   calfRaises,
   wallPushUp,
+  marchInPlace,
+  stepJacks,
+  shadowBoxing,
+  stepTouch,
+  crossBodyKneeLifts,
+  heelFlicks,
+  partingWildHorsesMane,
+  brushKneeAndPush,
+  goldenRooster,
+  repulseMonkey,
 ]
 
 const byId = new Map(allExercises.map((e) => [e.id, e]))

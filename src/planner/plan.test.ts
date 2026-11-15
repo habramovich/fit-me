@@ -290,6 +290,36 @@ describe('profile rules', () => {
   })
 })
 
+describe('cardio versions (batch 3)', () => {
+  it('uses the standard low-impact version, not the easier one, and fills the time', () => {
+    const r = plan(makePlan(input({ library: allExercises, routine: 'cardio', minutes: 15 })))
+    const cardio = r.items.filter(
+      (i) => allExercises.find((e) => e.id === i.exerciseId)!.technique === 'cardio',
+    )
+    expect(cardio.length).toBeGreaterThanOrEqual(3)
+    cardio.forEach((i) => expect(i.version).toBe('standard'))
+    expect(r.shortOfTime).toBe(false)
+  })
+
+  it('never picks a jumping version below advanced', () => {
+    for (const level of ['beginner', 'intermediate'] as const) {
+      const r = plan(
+        makePlan(
+          input({
+            library: allExercises,
+            routine: 'cardio',
+            profile: { ...DEFAULT_PROFILE, level },
+          }),
+        ),
+      )
+      for (const i of r.items) {
+        const e = allExercises.find((x) => x.id === i.exerciseId)!
+        if (e.technique === 'cardio') expect(e[i.version]!.lowImpact).toBe(true)
+      }
+    }
+  })
+})
+
 describe('phase preferences (004)', () => {
   const profile: Profile = { ...DEFAULT_PROFILE, phasePrefs: { 'cat-cow': ['warmup', 'cooldown'] } }
 
@@ -347,7 +377,8 @@ describe('swap and insufficient', () => {
   })
 
   it('says when a routine cannot be filled, with a suggestion', () => {
-    const r = makePlan(input({ library: allExercises, routine: 'cardio' }))
+    const noCardio = allExercises.filter((e) => e.technique !== 'cardio')
+    const r = makePlan(input({ library: noCardio, routine: 'cardio' }))
     expect(r.kind).toBe('insufficient')
     if (r.kind === 'insufficient') expect(r.suggestion).not.toBeNull()
   })
