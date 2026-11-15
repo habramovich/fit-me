@@ -28,6 +28,11 @@ function toSessionItems(items: PlayItem[], outcomes: PlayerState['outcomes']): S
 export function usePlayer(items: PlayItem[], routine: string, uid: string | null): UsePlayer {
   const [state, dispatch] = useReducer(playerReducer, items, initPlayer)
   const sessionId = useRef<string | null>(null)
+  // Latest active seconds, read when saving (ticks alone never cause a write).
+  const elapsed = useRef(0)
+  useEffect(() => {
+    elapsed.current = state.elapsed
+  }, [state.elapsed])
   const finished = state.phase === 'finished'
   const wakeLock = useWakeLock(!finished)
 
@@ -65,8 +70,9 @@ export function usePlayer(items: PlayItem[], routine: string, uid: string | null
   }, [uid, routine, items.length])
   useEffect(() => {
     if (!uid || sessionId.current === null) return
-    if (finished) finishSession(uid, sessionId.current, sessionItems)
-    else if (sessionItems.length > 0) recordItems(uid, sessionId.current, sessionItems)
+    if (finished) finishSession(uid, sessionId.current, sessionItems, elapsed.current)
+    else if (sessionItems.length > 0)
+      recordItems(uid, sessionId.current, sessionItems, elapsed.current)
   }, [uid, finished, sessionItems])
 
   return { state, dispatch, wakeLock }

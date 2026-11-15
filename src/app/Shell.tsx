@@ -9,6 +9,7 @@ import { Library } from '../screens/Library'
 import { Placeholder } from '../screens/Placeholder'
 import { PlanView } from '../screens/PlanView'
 import { Profile } from '../screens/Profile'
+import { Progress } from '../screens/Progress'
 import { Review } from '../screens/Review'
 import { reviewEnabled } from '../screens/reviewEnabled'
 import { Setup } from '../screens/Setup'
@@ -88,12 +89,7 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
       )
       break
     case 'progress':
-      screen = (
-        <Placeholder
-          title="Progress"
-          text="Streaks, minutes and how your exercises are levelling up will appear here."
-        />
-      )
+      screen = <Progress uid={user.uid} profile={profile} />
       break
     case 'profile':
       screen = <Profile user={user} record={record} profile={profile} />

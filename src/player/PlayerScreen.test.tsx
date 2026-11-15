@@ -53,9 +53,12 @@ describe('PlayerScreen', () => {
     await user.click(screen.getByRole('button', { name: /Just right/ }))
     expect(screen.getByRole('heading', { name: 'Session done' })).toBeInTheDocument()
     expect(screen.getByText(/1 done · 0 skipped · 1 rated/)).toBeInTheDocument()
-    expect(sessions.finishSession).toHaveBeenCalledWith('u1', 's1', [
-      { exerciseId: 'glute-bridge', version: 'standard', outcome: 'done', rating: 'right' },
-    ])
+    expect(sessions.finishSession).toHaveBeenCalledWith(
+      'u1',
+      's1',
+      [{ exerciseId: 'glute-bridge', version: 'standard', outcome: 'done', rating: 'right' }],
+      0,
+    )
   })
 
   it('counts down a timed hold and pauses', async () => {
@@ -74,5 +77,15 @@ describe('PlayerScreen', () => {
     })
     expect(screen.getByText('0:28')).toBeInTheDocument()
     expect(screen.getByText('Paused')).toBeInTheDocument()
+    // Skipping saves the outcome with the active (unpaused) seconds only.
+    act(() => {
+      screen.getByRole('button', { name: 'Skip exercise' }).click()
+    })
+    expect(sessions.finishSession).toHaveBeenLastCalledWith(
+      'u1',
+      's1',
+      [{ exerciseId: 'figure-four', version: 'standard', outcome: 'skipped', rating: null }],
+      2,
+    )
   })
 })

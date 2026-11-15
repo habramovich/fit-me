@@ -9,7 +9,10 @@ export function todayKey(now = new Date()): string {
   return dayKey(now)
 }
 
-export function summariseHistory(sessions: PastSession[], now = new Date()): HistorySummary {
+export function summariseHistory(
+  sessions: Pick<PastSession, 'startedAt' | 'items'>[],
+  now = new Date(),
+): HistorySummary {
   const yesterday = dayKey(new Date(now.getTime() - 86_400_000))
   const weekAgo = now.getTime() - 7 * 86_400_000
   const done = new Set<string>()
