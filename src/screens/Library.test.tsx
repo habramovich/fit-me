@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { MarksProvider } from '../app/marks'
+import { allExercises } from '../exercises'
 import { Library } from './Library'
 
 const setMark = vi.hoisted(() => vi.fn(async () => {}))
@@ -26,7 +27,7 @@ const cards = () => within(screen.getByRole('list')).getAllByRole('listitem')
 describe('Library', () => {
   it('lists every exercise with name and dose', () => {
     renderLibrary()
-    expect(cards()).toHaveLength(8)
+    expect(cards()).toHaveLength(allExercises.length)
     expect(screen.getByText('Bird dog')).toBeInTheDocument()
     expect(screen.getAllByText(/recommended/).length).toBeGreaterThan(0)
   })
@@ -60,6 +61,6 @@ describe('Library', () => {
     await userEvent.type(screen.getByLabelText('Search exercises'), 'zzz')
     expect(screen.getByText('No exercises match.')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }))
-    expect(cards()).toHaveLength(8)
+    expect(cards()).toHaveLength(allExercises.length)
   })
 })

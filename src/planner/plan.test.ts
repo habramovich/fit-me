@@ -156,6 +156,26 @@ describe('planner basics', () => {
     expect(p.items.some((i) => i.phase === 'main')).toBe(true)
   })
 
+  it('keeps a Calm morning to fewer, longer exercises than a Desk break of the same length', () => {
+    const calm = plan(makePlan(input({ library: allExercises, routine: 'calm', minutes: 15 })))
+    expect(calm.items.length).toBeLessThanOrEqual(10)
+    const desk = plan(makePlan(input({ library: allExercises, routine: 'desk', minutes: 15 })))
+    expect(calm.items.length).toBeLessThan(desk.items.length + 1)
+  })
+
+  it('a Calm morning prefers yoga, tai chi and mobility over strength', () => {
+    for (let s = 0; s < 10; s++) {
+      const items = plan(
+        makePlan(input({ library: allExercises, routine: 'calm', shuffle: s })),
+      ).items
+      expect(
+        items.filter(
+          (i) => allExercises.find((e) => e.id === i.exerciseId)!.technique === 'strength',
+        ).length,
+      ).toBeLessThanOrEqual(1)
+    }
+  })
+
   it('gives every item a reason', () => {
     plan(makePlan(input())).items.forEach((i) => expect(i.reason.length).toBeGreaterThan(3))
   })

@@ -154,6 +154,15 @@ export function Figure({
             strokeLinecap="round"
           />
         )}
+        {spec.props?.seat && (
+          <path
+            d={`M${spec.props.seat[1]} ${spec.props.seat[0]}H${spec.props.seat[2]}M${spec.props.seat[1] + 4} ${spec.props.seat[0]}V152M${spec.props.seat[2] - 4} ${spec.props.seat[0]}V152`}
+            stroke="var(--figure-prop)"
+            strokeWidth="6"
+            strokeLinecap="round"
+            fill="none"
+          />
+        )}
         {spec.props?.chair && (
           <g stroke="var(--figure-prop)" strokeWidth="6" strokeLinecap="round" fill="none">
             <path
