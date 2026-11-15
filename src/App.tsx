@@ -1,6 +1,6 @@
 import './App.css'
+import { Shell } from './app/Shell'
 import { useSession } from './auth/useSession'
-import { Home } from './screens/Home'
 import { NotInvited } from './screens/NotInvited'
 import { SignedOut } from './screens/SignedOut'
 import { Status } from './screens/Status'
@@ -23,6 +23,6 @@ export default function App() {
     case 'notInvited':
       return <NotInvited />
     case 'invited':
-      return <Home user={state.user} record={record} />
+      return <Shell user={state.user} record={record} />
   }
 }

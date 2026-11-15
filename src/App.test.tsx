@@ -12,6 +12,13 @@ const signIn = vi.hoisted(() => ({
 
 vi.mock('./auth/useSession', () => ({ useSession: () => mockSession.current }))
 vi.mock('./auth/signIn', () => signIn)
+// Firestore listeners are not under test here; marks start empty.
+vi.mock('./data/repo/marks', () => ({ watchMarks: () => () => {}, setMark: vi.fn(async () => {}) }))
+vi.mock('./data/repo/sessions', () => ({
+  startSession: () => 's1',
+  recordItems: vi.fn(),
+  finishSession: vi.fn(),
+}))
 
 const user = { uid: 'u1', email: 'ann@example.com', displayName: 'Ann' }
 
@@ -60,23 +67,36 @@ describe('App screens', () => {
     expect(signIn.signOutUser).toHaveBeenCalledOnce()
   })
 
-  it('greets an invited person by name with the last sign-in time from their record', () => {
-    setSession({
-      state: { status: 'invited', user },
-      record: {
-        schemaVersion: 1,
-        displayName: 'Ann',
-        email: user.email,
-        lastSignInAt: new Date('2026-11-14T09:30:00'),
-      },
-    })
+  const record = {
+    schemaVersion: 1,
+    displayName: 'Ann',
+    email: user.email,
+    lastSignInAt: new Date('2026-11-14T09:30:00'),
+  }
+
+  it('greets an invited person by name on Today, with the tab bar and a Start link', () => {
+    window.location.hash = '#/today'
+    setSession({ state: { status: 'invited', user }, record })
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Hi, Ann' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Start/ })).toHaveAttribute(
+      'href',
+      '#/player?routine=sample',
+    )
+  })
+
+  it('shows the last sign-in time and Sign out on Profile', async () => {
+    window.location.hash = '#/profile'
+    setSession({ state: { status: 'invited', user }, record })
+    render(<App />)
     expect(screen.getByText(/Last signed in/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    expect(signIn.signOutUser).toHaveBeenCalledOnce()
   })
 
   it('falls back to email when there is no display name', () => {
+    window.location.hash = '#/today'
     setSession({ state: { status: 'invited', user: { ...user, displayName: null } } })
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Hi, ann@example.com' })).toBeInTheDocument()
