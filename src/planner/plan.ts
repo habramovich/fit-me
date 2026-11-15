@@ -112,10 +112,12 @@ export function chooseVersion(
   if (goEasy) preferred = ['easier', 'standard']
   else if (profile.level === 'advanced') preferred = ['harder', 'standard', 'easier']
   else preferred = ['standard', 'easier', 'harder']
-  // Cardio below advanced: low-impact first (FR-009).
+  // Cardio below advanced: low-impact only when there is a choice (FR-009), keeping the usual
+  // order among low-impact versions (standard before easier unless going easy).
   if (e.technique === 'cardio' && profile.level !== 'advanced') {
-    const low = (['easier', 'standard', 'harder'] as VersionKey[]).filter((k) => e[k]?.lowImpact)
-    preferred = [...low, ...preferred.filter((k) => !low.includes(k))]
+    const all: VersionKey[] = [...preferred, ...(['easier', 'standard', 'harder'] as const)]
+    const low = [...new Set(all)].filter((k) => e[k]?.lowImpact)
+    if (low.length > 0) preferred = low
   }
   const have = new Set<string>(['none', ...profile.equipment])
   for (const key of preferred) {
@@ -419,16 +421,6 @@ export function makePlan(input: PlanInput): PlanResult {
   }
   picked.sort((a, b) => PHASES.indexOf(a.phase) - PHASES.indexOf(b.phase))
 
-  // Calm morning ends on a breathing move when there is one in the cool-down.
-  if (input.routine === 'calm') {
-    const cool = picked.filter((p) => p.phase === 'cooldown')
-    const breath = cool.find((p) => byId.get(p.exerciseId)!.tags.includes('breathing'))
-    if (breath && cool[cool.length - 1] !== breath) {
-      picked.splice(picked.indexOf(breath), 1)
-      picked.push(breath)
-    }
-  }
-
   // Fit the time: scale doses within their ranges, then drop or add main items.
   const versionOf = (p: PlanItem) => byId.get(p.exerciseId)![p.version]!
   const total = () => picked.reduce((sum, p) => sum + p.seconds, 0)
@@ -461,11 +453,12 @@ export function makePlan(input: PlanInput): PlanResult {
   rescale()
   trim()
   for (let guard = 0; guard < 20 && total() < target - tolerance; guard++) {
-    if (!pickOne('main', true)) break
-    // Keep cool-down last.
-    const added = picked.pop()!
-    const firstCool = picked.findIndex((p) => p.phase === 'cooldown')
-    picked.splice(firstCool === -1 ? picked.length : firstCool, 0, added)
+    // Short of time: add to the main part first, then the cool-down, then the warm-up
+    // (e.g. Cardio, once every cardio move is in the main part).
+    if (!pickOne('main', true) && !pickOne('cooldown', true) && !pickOne('warmup', true)) break
+    const added = picked[picked.length - 1]
+    // Back into phase order (stable, so the new item goes at the end of its part).
+    picked.sort((a, b) => PHASES.indexOf(a.phase) - PHASES.indexOf(b.phase))
     rescale()
     if (total() > target + tolerance) {
       // That addition overshot and doses can't shrink further: take it back and stop.
@@ -476,6 +469,16 @@ export function makePlan(input: PlanInput): PlanResult {
     }
   }
   trim()
+
+  // Calm morning ends on a breathing move when there is one in the cool-down.
+  if (input.routine === 'calm') {
+    const cool = picked.filter((p) => p.phase === 'cooldown')
+    const breath = cool.find((p) => byId.get(p.exerciseId)!.tags.includes('breathing'))
+    if (breath && cool[cool.length - 1] !== breath) {
+      picked.splice(picked.indexOf(breath), 1)
+      picked.push(breath)
+    }
+  }
 
   // Swaps: replace an item with the next-best alternative for its phase.
   for (const [indexText, count] of Object.entries(input.swaps ?? {})) {

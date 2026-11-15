@@ -13,12 +13,16 @@ const profile = {
   focusAreas: ['shoulders' as const, 'hips' as const],
 }
 
-function renderPlan(routine: 'calm' | 'cardio', history = EMPTY_HISTORY) {
+function renderPlan(
+  routine: 'calm' | 'cardio',
+  history = EMPTY_HISTORY,
+  over: Partial<typeof profile> = {},
+) {
   render(
     <MarksProvider uid="u1">
       <PlanView
         params={{ routine, minutes: 15, shuffle: 0, swaps: {} }}
-        profile={profile}
+        profile={{ ...profile, ...over }}
         history={history}
       />
     </MarksProvider>,
@@ -41,7 +45,16 @@ describe('PlanView', () => {
   })
 
   it('says when the library cannot fill a routine yet', () => {
-    renderPlan('cardio')
+    // With every technique but strength set to None, Cardio has nothing to plan.
+    renderPlan('cardio', EMPTY_HISTORY, {
+      techniques: {
+        yoga: 'none',
+        taichi: 'none',
+        strength: 'some',
+        mobility: 'none',
+        cardio: 'none',
+      },
+    })
     expect(screen.getByText(/aren’t enough exercises/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /instead/ })).toBeInTheDocument()
   })
