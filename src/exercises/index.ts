@@ -6,6 +6,20 @@ import { gluteBridge } from './data/glute-bridge'
 import { hipCircles } from './data/hip-circles'
 import { pelvicTilts } from './data/pelvic-tilts'
 import { shoulderRotations } from './data/shoulder-rotations'
+// Batch 2: calm morning, desk break, strength keeper
+import { calfRaises } from './data/calf-raises'
+import { chestOpener } from './data/chest-opener'
+import { childsPose } from './data/childs-pose'
+import { chinTucks } from './data/chin-tucks'
+import { lowLunge } from './data/low-lunge'
+import { seatedSideBend } from './data/seated-side-bend'
+import { sitToStand } from './data/sit-to-stand'
+import { sunriseBreath } from './data/sunrise-breath'
+import { taiChiCommencement } from './data/tai-chi-commencement'
+import { treePose } from './data/tree-pose'
+import { wallAngels } from './data/wall-angels'
+import { wallPushUp } from './data/wall-push-up'
+import { waveHandsLikeClouds } from './data/wave-hands-like-clouds'
 import {
   BODY_AREA_LABEL,
   TECHNIQUE_LABEL,
@@ -24,6 +38,19 @@ export const allExercises: readonly Exercise[] = [
   birdDog,
   gluteBridge,
   figureFour,
+  sunriseBreath,
+  taiChiCommencement,
+  waveHandsLikeClouds,
+  childsPose,
+  treePose,
+  lowLunge,
+  seatedSideBend,
+  chestOpener,
+  chinTucks,
+  wallAngels,
+  sitToStand,
+  calfRaises,
+  wallPushUp,
 ]
 
 const byId = new Map(allExercises.map((e) => [e.id, e]))

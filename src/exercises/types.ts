@@ -119,6 +119,8 @@ export interface Props {
   chair?: Point
   /** Wall: vertical line at this x. */
   wall?: number
+  /** Chair seen from the front: seat edge at height y from x1 to x2, with legs to the floor. */
+  seat?: [y: number, x1: number, x2: number]
 }
 
 /**

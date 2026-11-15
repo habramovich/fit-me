@@ -65,8 +65,8 @@ US1 player · US2 library · US3 marks · US4 batches
 
 ## Phase 7: Later batches (content-only PRs, each reviewed on a preview channel)
 
-- [ ] T032 [US4] Batch 2: about 10 (yoga + tai chi focus)
-- [ ] T033 [US4] Batch 3: about 10 (cardio, low-impact first, + strength)
+- [X] T032 [US4] Batch 2: 13 exercises chosen for the owner’s profile (calm morning, desk break, strength keeper): sunrise breath, tai chi commencement, wave hands like clouds, child’s pose, tree pose, low lunge, seated side bend, chest opener, chin tucks, wall angels, sit-to-stand, calf raises, wall push-up. Library: 21 (yoga 6, mobility 7, strength 6, tai chi 2)
+- [ ] T033 [US4] Batch 3: cardio (≥ 6, low-impact first) + tai chi (≥ 4 more)
 - [ ] T034 [US4] Batch 4: remainder to ≥ 40 with ≥ 6 per technique (5 techniques)
 
 ## Dependencies

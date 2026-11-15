@@ -19,20 +19,24 @@ export interface RoutineDef {
   areaBoost: BodyArea[]
   /** Main part must be only these techniques (Cardio). */
   mainTechniques?: Technique[]
+  /** Target seconds per exercise: fewer, longer exercises for calmer routines. */
+  pace: number
 }
 
 export const ROUTINES: Record<RoutineId, RoutineDef> = {
   calm: {
     id: 'calm',
+    pace: 100,
     name: 'Calm morning',
     hint: 'Breath, gentle yoga, tai chi',
     shares: { warmup: 0.3, main: 0.5, cooldown: 0.2 },
     intensities: ['gentle'],
-    techniqueBoost: { yoga: 1, taichi: 1, mobility: 1 },
+    techniqueBoost: { yoga: 1, taichi: 1, mobility: 1, strength: -3 },
     areaBoost: [],
   },
   desk: {
     id: 'desk',
+    pace: 60,
     name: 'Desk break',
     hint: 'Standing or seated reset',
     shares: { warmup: 0.2, main: 0.6, cooldown: 0.2 },
@@ -44,6 +48,7 @@ export const ROUTINES: Record<RoutineId, RoutineDef> = {
   },
   strength: {
     id: 'strength',
+    pace: 90,
     name: 'Strength keeper',
     hint: 'Legs, back, balance',
     shares: { warmup: 0.2, main: 0.65, cooldown: 0.15 },
@@ -53,6 +58,7 @@ export const ROUTINES: Record<RoutineId, RoutineDef> = {
   },
   weekend: {
     id: 'weekend',
+    pace: 110,
     name: 'Weekend longer',
     hint: 'A fuller mix, more tai chi',
     shares: { warmup: 0.2, main: 0.6, cooldown: 0.2 },
@@ -62,6 +68,7 @@ export const ROUTINES: Record<RoutineId, RoutineDef> = {
   },
   cardio: {
     id: 'cardio',
+    pace: 90,
     name: 'Cardio',
     hint: 'Heart rate up, low impact',
     shares: { warmup: 0.2, main: 0.6, cooldown: 0.2 },
