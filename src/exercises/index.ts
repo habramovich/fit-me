@@ -42,6 +42,22 @@ import { wallSit } from './data/wall-sit'
 import { sideLyingLegLifts } from './data/side-lying-leg-lifts'
 import { clamshells } from './data/clamshells'
 import { proneWRaises } from './data/prone-w-raises'
+// Batch 5: Shibashi qigong
+import { broadeningTheChest } from './data/broadening-the-chest'
+import { dancingWithRainbows } from './data/dancing-with-rainbows'
+import { circlingArms } from './data/circling-arms'
+import { twistAndSwingArms } from './data/twist-and-swing-arms'
+import { rowingTheBoat } from './data/rowing-the-boat'
+import { holdingABall } from './data/holding-a-ball'
+import { carryingTheMoon } from './data/carrying-the-moon'
+import { twistAndPushPalms } from './data/twist-and-push-palms'
+import { scoopingFromTheSea } from './data/scooping-from-the-sea'
+import { playingWithWaves } from './data/playing-with-waves'
+import { spreadingTheWings } from './data/spreading-the-wings'
+import { taiChiPunching } from './data/tai-chi-punching'
+import { flyingWildGoose } from './data/flying-wild-goose'
+import { spinningWheels } from './data/spinning-wheels'
+import { bouncingTheBall } from './data/bouncing-the-ball'
 import {
   BODY_AREA_LABEL,
   TECHNIQUE_LABEL,
@@ -94,6 +110,21 @@ export const allExercises: readonly Exercise[] = [
   sideLyingLegLifts,
   clamshells,
   proneWRaises,
+  broadeningTheChest,
+  dancingWithRainbows,
+  circlingArms,
+  twistAndSwingArms,
+  rowingTheBoat,
+  holdingABall,
+  carryingTheMoon,
+  twistAndPushPalms,
+  scoopingFromTheSea,
+  playingWithWaves,
+  spreadingTheWings,
+  taiChiPunching,
+  flyingWildGoose,
+  spinningWheels,
+  bouncingTheBall,
 ]
 
 const byId = new Map(allExercises.map((e) => [e.id, e]))

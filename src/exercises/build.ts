@@ -1,5 +1,5 @@
 // Small helpers for writing exercise data.
-import type { Limbs, Point, Pose } from './types'
+import type { Arrow, FigureSpec, Limbs, Point, Pose } from './types'
 
 /** One side's limbs: elbow, wrist, knee, ankle, toe. */
 export const limbs = (el: Point, wr: Point, kn: Point, an: Point, to: Point): Limbs => ({
@@ -70,4 +70,90 @@ export const FRONT_SEATED: Pose = {
   hip: [125, 108],
   N: limbs([106, 86], [104, 108], [112, 120], [110, 150], [102, 151]),
   F: limbs([144, 86], [146, 108], [138, 120], [140, 150], [148, 151]),
+}
+
+const mirrorPoint = (q: Point): Point => [250 - q[0], q[1]]
+const mirrorLimbs = (l: Limbs): Limbs =>
+  limbs(
+    mirrorPoint(l.el),
+    mirrorPoint(l.wr),
+    mirrorPoint(l.kn),
+    mirrorPoint(l.an),
+    mirrorPoint(l.to),
+  )
+
+/** Front view: the same pose to the other side (the figure's right becomes its left). */
+export function mirror(p: Pose): Pose {
+  return {
+    head: mirrorPoint(p.head),
+    sh: mirrorPoint(p.sh),
+    hip: mirrorPoint(p.hip),
+    ctrl: p.ctrl && mirrorPoint(p.ctrl),
+    N: mirrorLimbs(p.F),
+    F: mirrorLimbs(p.N),
+  }
+}
+
+/** Front view: mirror an arrow to go with `mirror`. */
+export const mirrorArrow = (a: Arrow): Arrow => ({
+  p: mirrorPoint(a.p),
+  q: mirrorPoint(a.q),
+  bend: -a.bend,
+})
+
+const moveArrow = (a: Arrow, dx: number, dy: number): Arrow => ({
+  p: [a.p[0] + dx, a.p[1] + dy],
+  q: [a.q[0] + dx, a.q[1] + dy],
+  bend: a.bend,
+})
+
+/**
+ * Front view: a standing pose sitting on FRONT_SEAT. The upper body drops 14 and is centred over
+ * the seat (a standing weight shift becomes nothing); the legs come from FRONT_SEATED.
+ */
+export function seatedFront(p: Pose): Pose {
+  const dx = FRONT_SEATED.hip[0] - p.hip[0]
+  const dy = FRONT_SEATED.hip[1] - p.hip[1]
+  const m = (q: Point): Point => [q[0] + dx, q[1] + dy]
+  return {
+    head: m(p.head),
+    sh: m(p.sh),
+    hip: FRONT_SEATED.hip,
+    ctrl: p.ctrl && m(p.ctrl),
+    N: { ...FRONT_SEATED.N, el: m(p.N.el), wr: m(p.N.wr) },
+    F: { ...FRONT_SEATED.F, el: m(p.F.el), wr: m(p.F.wr) },
+  }
+}
+
+/**
+ * Side view: a standing pose's arms on SIDE_SEATED, moved with the shoulder. The seated torso,
+ * head and legs come from SIDE_SEATED.
+ */
+export function seatedSide(p: Pose): Pose {
+  const dx = SIDE_SEATED.sh[0] - p.sh[0]
+  const dy = SIDE_SEATED.sh[1] - p.sh[1]
+  const m = (q: Point): Point => [q[0] + dx, q[1] + dy]
+  return {
+    ...SIDE_SEATED,
+    N: { ...SIDE_SEATED.N, el: m(p.N.el), wr: m(p.N.wr) },
+    F: { ...SIDE_SEATED.F, el: m(p.F.el), wr: m(p.F.wr) },
+  }
+}
+
+/**
+ * The seated version of a standing figure: poses via `seatedFront` / `seatedSide`, arrows moved
+ * with the upper body, and the chair. Labels, breath and holds carry over; give a new `alt`.
+ */
+export function seatedFigure(spec: FigureSpec, alt: string): FigureSpec {
+  const front = spec.view === 'front'
+  const [dx, dy] = front
+    ? [0, FRONT_SEATED.hip[1] - FRONT_STANDING.hip[1]]
+    : [SIDE_SEATED.sh[0] - SIDE_STANDING.sh[0], SIDE_SEATED.sh[1] - SIDE_STANDING.sh[1]]
+  return {
+    ...spec,
+    props: front ? { seat: FRONT_SEAT } : { chair: SIDE_CHAIR },
+    keyframes: spec.keyframes.map(front ? seatedFront : seatedSide),
+    arrows: spec.arrows.map((list) => list.map((a) => moveArrow(a, dx, dy))),
+    alt,
+  }
 }
