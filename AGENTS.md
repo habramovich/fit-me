@@ -57,6 +57,9 @@ local work uses the emulators with project `demo-fitme`.
    version and one column per key pose with that move's arrows, drawn from the real `<Figure>`.
    Movements in the horizontal plane (e.g. hip circles) use a `ring` instead of arrows; circles
    in the front-to-back plane (e.g. shoulder rotations) read best in side view.
+   Check the Doodle style too: `STYLE=doodle` writes `figure-renders/<id>-doodle.png`. Its face
+   direction is guessed from how the joints bend; if a face looks the wrong way, set the figure's
+   `nose` (`'left' | 'right' | 'up' | 'down'`, where the nose points in keyframe 0).
 5. Owner review: `npx firebase hosting:channel:deploy batch-<n> --expires 7d --project
    fit-me-today`, then open the preview URL + `#/review`.
 

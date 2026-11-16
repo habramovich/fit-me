@@ -23,6 +23,8 @@ const figure: FigureSpec = {
   keyframes: [crossed, drawn],
   arrows: [[{ p: [162, 96], q: [136, 84], bend: -8 }]],
   labels: ['Hold behind the thigh and draw it toward you', 'Ease off a little'],
+  // Lying on the back; the crossed legs fool the facing guess.
+  nose: 'up',
   alt: 'Lying on the back with one ankle crossed over the opposite knee; the hands hold behind the lower thigh and draw it gently toward the chest, stretching the crossed hip.',
 }
 
@@ -34,6 +36,7 @@ const easierFigure: FigureSpec = {
   ],
   arrows: [[{ p: [168, 116], q: [176, 134], bend: -4 }]],
   labels: ['Let the crossed knee open gently', 'Relax'],
+  nose: 'up',
   alt: 'Lying on the back with one ankle crossed over the opposite knee and that foot on the floor; the crossed knee opens gently.',
 }
 

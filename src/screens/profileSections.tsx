@@ -6,11 +6,15 @@ import {
   type BodyArea,
   type Level,
 } from '../exercises/types'
+import { warriorTwo } from '../exercises/data/warrior-two'
+import { Figure } from '../figure/Figure'
+import { FIGURE_STYLES } from '../figure/style'
 import { ROUTINES, ROUTINE_ORDER } from '../planner/routines'
 import {
   AGE_LABEL,
   AMOUNT_LABEL,
   EQUIPMENT_LABEL,
+  FIGURE_STYLE_LABEL,
   GOAL_LABEL,
   TRY_NEW_LABEL,
   type AgeRange,
@@ -213,6 +217,39 @@ export function HomeSection({ profile, onChange }: SectionProps) {
         value={profile.tryNew}
         onChange={(tryNew) => onChange({ tryNew })}
       />
+    </section>
+  )
+}
+
+/** Figure style (007): Classic or Doodle, each shown as a small preview of the same pose. */
+export function FigureStyleSection({ profile, onChange }: SectionProps) {
+  return (
+    <section className="stack" aria-labelledby="fig-h">
+      <h2 id="fig-h">Figure style</h2>
+      <div className="style-pick" role="group" aria-labelledby="fig-h">
+        {FIGURE_STYLES.map((s) => (
+          // The button's hit area stretches over the whole card (see .style-pick__option button).
+          <div
+            key={s}
+            className={
+              profile.figureStyle === s
+                ? 'style-pick__option style-pick__option--on'
+                : 'style-pick__option'
+            }
+          >
+            <div aria-hidden="true">
+              <Figure spec={warriorTwo.standard.figure} thumbnail figureStyle={s} />
+            </div>
+            <button
+              type="button"
+              aria-pressed={profile.figureStyle === s}
+              onClick={() => onChange({ figureStyle: s })}
+            >
+              {FIGURE_STYLE_LABEL[s]}
+            </button>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }

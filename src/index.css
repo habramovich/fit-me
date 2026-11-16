@@ -35,6 +35,10 @@
   --figure-far: #a9b8b1;
   --figure-mat: #e7e2d8;
   --figure-prop: #cfc9be;
+  /* Doodle figure (007) */
+  --doodle-ink: #2b3832;
+  --doodle-far: #9aaba3;
+  --doodle-paper: #ffffff;
 
   --radius-card: 16px;
   --radius-control: 14px;

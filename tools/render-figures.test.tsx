@@ -1,6 +1,7 @@
 // Dev tool: renders every exercise figure at each key pose to PNG for visual checking.
 //   npm run render:figures            → all exercises
 //   FIGURES=hip-circles,dead-bug npm run render:figures
+//   STYLE=doodle npm run render:figures  → figure-renders/<id>-doodle.png
 // Output: figure-renders/<id>.png (git-ignored). Rows = distinct figures (easier/standard/harder),
 // columns = key poses, each showing the arrows for the move that starts there.
 // It draws the real <Figure> markup with a tiny SVG rasterizer (line, circle, rect, path with
@@ -12,6 +13,7 @@ import { it } from 'vitest'
 import { allExercises } from '../src/exercises'
 import type { FigureSpec } from '../src/exercises/types'
 import { Figure } from '../src/figure/Figure'
+import type { FigureStyle } from '../src/figure/style'
 
 const OUT = 'figure-renders'
 const SCALE = 2
@@ -156,13 +158,16 @@ function shapesFrom(svg: string): Shape[] {
         alpha,
       })
     } else if (tag === 'circle') {
-      if (fill)
-        shapes.push({
-          kind: 'fill',
-          circle: { c: [+own.cx, +own.cy], r: +own.r },
-          color: fill,
-          alpha,
-        })
+      const c: Pt = [+own.cx, +own.cy]
+      if (fill) shapes.push({ kind: 'fill', circle: { c, r: +own.r }, color: fill, alpha })
+      if (stroke) {
+        const pts: Pt[] = []
+        for (let k = 0; k <= 32; k++) {
+          const a = (k / 32) * 2 * Math.PI
+          pts.push([c[0] + +own.r * Math.cos(a), c[1] + +own.r * Math.sin(a)])
+        }
+        shapes.push({ kind: 'stroke', pts, width, color: stroke, alpha })
+      }
     } else if (tag === 'rect' && fill) {
       shapes.push({
         kind: 'fill',
@@ -173,8 +178,14 @@ function shapesFrom(svg: string): Shape[] {
     } else if (tag === 'path' && own.d) {
       const { pts, closed } = parsePath(own.d)
       if (closed && fill) shapes.push({ kind: 'fill', poly: pts, color: fill, alpha })
-      else if (stroke && pts.length > 1)
-        shapes.push({ kind: 'stroke', pts, width, color: stroke, alpha })
+      if (stroke && pts.length > 1)
+        shapes.push({
+          kind: 'stroke',
+          pts: closed ? [...pts, pts[0]] : pts,
+          width,
+          color: stroke,
+          alpha,
+        })
     }
   }
   return shapes
@@ -262,8 +273,11 @@ function png(w: number, h: number, raw: Buffer): Buffer {
   ])
 }
 
+// STYLE=doodle renders the doodle style to <id>-doodle.png (007).
+const STYLE: FigureStyle = process.env.STYLE === 'doodle' ? 'doodle' : 'classic'
+
 function svgOf(spec: FigureSpec, still: number): string {
-  const html = renderToStaticMarkup(<Figure spec={spec} still={still} />)
+  const html = renderToStaticMarkup(<Figure spec={spec} still={still} figureStyle={STYLE} />)
   return html.match(/<svg viewBox="0 0 250 180"[\s\S]*?<\/svg>/)![0]
 }
 
@@ -286,7 +300,8 @@ it('renders figures', () => {
         paintTile(shapesFrom(svgOf(f, k)), raw, rowBytes, k * (TW + GAP), r * (TH + GAP)),
       ),
     )
-    writeFileSync(`${OUT}/${e.id}.png`, png(W, H, raw))
-    console.log(`${OUT}/${e.id}.png`)
+    const file = `${OUT}/${e.id}${STYLE === 'doodle' ? '-doodle' : ''}.png`
+    writeFileSync(file, png(W, H, raw))
+    console.log(file)
   }
 }, 300_000)

@@ -1,5 +1,6 @@
 // Profile model. See specs/003-profile-planner/data-model.md.
 import type { BodyArea, Equipment, Level, Phase, Technique } from '../exercises/types'
+import { FIGURE_STYLES, type FigureStyle } from '../figure/style'
 
 export type AgeRange = 'u30' | '30s' | '40s' | '50s' | '60s' | '70plus'
 export type Sex = 'woman' | 'man'
@@ -37,6 +38,8 @@ export interface Profile {
   phasePrefs: Record<string, Phase[]>
   /** Weekly goal in active minutes (005), 30–600. */
   weeklyMinutes: number
+  /** How exercise figures are drawn (007). */
+  figureStyle: FigureStyle
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -55,6 +58,7 @@ export const DEFAULT_PROFILE: Profile = {
   routineMinutes: { calm: 15, desk: 5, strength: 20, weekend: 35, cardio: 15 },
   phasePrefs: {},
   weeklyMinutes: 90,
+  figureStyle: 'classic',
 }
 
 /** Fills missing fields with defaults (older or partial records). */
@@ -66,7 +70,16 @@ export function withDefaults(stored: Partial<Profile> | null | undefined): Profi
     techniques: { ...DEFAULT_PROFILE.techniques, ...(p.techniques ?? {}) },
     routineMinutes: { ...DEFAULT_PROFILE.routineMinutes, ...(p.routineMinutes ?? {}) },
     phasePrefs: { ...(p.phasePrefs ?? {}) },
+    // Missing or any other value (e.g. from a newer app) reads as Classic.
+    figureStyle: FIGURE_STYLES.includes(p.figureStyle as FigureStyle)
+      ? (p.figureStyle as FigureStyle)
+      : 'classic',
   }
+}
+
+export const FIGURE_STYLE_LABEL: Record<FigureStyle, string> = {
+  classic: 'Classic',
+  doodle: 'Doodle',
 }
 
 export const AGE_LABEL: Record<AgeRange, string> = {

@@ -5,6 +5,7 @@ import type { Profile as ProfileData } from '../profile/types'
 import {
   AboutYouSection,
   CareSection,
+  FigureStyleSection,
   FocusSection,
   GoalsSection,
   HomeSection,
@@ -46,6 +47,7 @@ export function Profile({
       <CareSection {...props} />
       <TechniquesSection {...props} />
       <HomeSection {...props} />
+      <FigureStyleSection {...props} />
       <RoutineDefaultsSection {...props} />
       <AboutYouSection {...props} />
 

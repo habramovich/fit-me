@@ -163,6 +163,11 @@ export interface FigureSpec {
   alt: string
   /** For holds: the keyframe the figure moves into and stays on (default 1). */
   holdAt?: number
+  /**
+   * Doodle style, side view: where the face's nose points in keyframe 0. Set only when the
+   * automatic guess (from how the joints bend) looks the wrong way in the doodle renders.
+   */
+  nose?: 'left' | 'right' | 'up' | 'down'
 }
 
 export interface Version {
