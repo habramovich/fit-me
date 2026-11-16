@@ -24,7 +24,7 @@ const figure: FigureSpec = {
   keyframes: [wings, reach],
   arrows: [
     [
-      { p: [146, 42], q: [42, 54], bend: 12 },
+      { p: [140, 64], q: [44, 70], bend: -6 },
       { p: [120, 114], q: [100, 114], bend: 0 },
     ],
   ],
