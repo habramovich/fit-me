@@ -2,6 +2,7 @@ import type { SessionUser } from '../auth/session'
 import type { UserRecord } from '../data/repo/users'
 import { FigureStyleContext } from '../figure/style'
 import { useHistory } from '../planner/usePlan'
+import { PlanPlayer } from '../player/PlanPlayer'
 import { PlayerScreen } from '../player/PlayerScreen'
 import { SetPlayer } from '../player/SetPlayer'
 import { withDefaults } from '../profile/types'
@@ -17,6 +18,7 @@ import { Setup } from '../screens/Setup'
 import { SetView } from '../screens/SetView'
 import { Today } from '../screens/Today'
 import { MarksProvider } from './marks'
+import { PlansProvider } from './plans'
 import { SetsProvider } from './sets'
 import { useRoute } from './router'
 import { TabBar } from './TabBar'
@@ -27,6 +29,8 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
   const name = record?.displayName || user.displayName || user.email
   const profile = withDefaults(record?.profile)
   const history = useHistory(user.uid)
+  // The planner waits for the real profile: defaults could make kept items look unfit.
+  const plannerProfile = record !== null ? profile : null
 
   // First run: setup until done (only once the record has loaded, to avoid a flash).
   const needsSetup = record !== null && !profile.setupDone
@@ -47,7 +51,7 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
       screen = <ExerciseDetail id={effective.id} uid={user.uid} profile={profile} />
       break
     case 'plan':
-      screen = <PlanView params={effective.plan} profile={profile} history={history} />
+      screen = <PlanView params={effective.plan} profile={plannerProfile} history={history} />
       break
     case 'set':
       screen = <SetView id={effective.id} />
@@ -55,10 +59,16 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
     case 'player':
       if (effective.routine.startsWith('set:')) {
         screen = (
-          <SetPlayer
-            key={effective.routine}
-            id={effective.routine.slice(4)}
-            profile={profile}
+          <SetPlayer key={effective.routine} id={effective.routine.slice(4)} uid={user.uid} />
+        )
+        break
+      }
+      if (effective.routine === 'plan' && effective.plan) {
+        screen = (
+          <PlanPlayer
+            key={JSON.stringify(effective)}
+            plan={effective.plan}
+            profile={plannerProfile}
             history={history}
             uid={user.uid}
           />
@@ -71,9 +81,6 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
           key={JSON.stringify(effective)}
           routine={effective.routine}
           version={effective.version}
-          plan={effective.plan}
-          profile={profile}
-          history={history}
           uid={user.uid}
         />
       )
@@ -104,12 +111,14 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
   return (
     <MarksProvider uid={user.uid}>
       <SetsProvider uid={user.uid}>
-        <FigureStyleContext.Provider value={profile.figureStyle}>
-          <div className={fullScreen ? 'shell shell--full' : 'shell'}>
-            {screen}
-            {!fullScreen && <TabBar route={effective} />}
-          </div>
-        </FigureStyleContext.Provider>
+        <PlansProvider uid={user.uid}>
+          <FigureStyleContext.Provider value={profile.figureStyle}>
+            <div className={fullScreen ? 'shell shell--full' : 'shell'}>
+              {screen}
+              {!fullScreen && <TabBar route={effective} />}
+            </div>
+          </FigureStyleContext.Provider>
+        </PlansProvider>
       </SetsProvider>
     </MarksProvider>
   )

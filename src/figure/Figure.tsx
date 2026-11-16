@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FigureSpec, Point, Pose } from '../exercises/types'
+import type { FigureSpec, Pace, Point, Pose } from '../exercises/types'
 import './Figure.css'
 import {
   HEAD_R,
@@ -9,6 +9,8 @@ import {
   collar,
   face,
   facingFor,
+  holdEntrySeconds,
+  holdPhaseAt,
   labelFor,
   limbPath,
   limbSegments,
@@ -16,6 +18,7 @@ import {
   poseAt,
   ringDot,
   ringPaths,
+  timingFor,
   torsoOutline,
   transitionArrows,
   type Phase,
@@ -43,8 +46,8 @@ function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
-/** Seconds of animation time, advancing only while `playing`. */
-function useAnimationClock(playing: boolean): number {
+/** Seconds of animation time, advancing only while `playing`, up to `limit`. */
+function useAnimationClock(playing: boolean, limit = Infinity): number {
   const [elapsed, setElapsed] = useState(0)
   const last = useRef<number | null>(null)
   useEffect(() => {
@@ -56,14 +59,15 @@ function useAnimationClock(playing: boolean): number {
     const tick = (now: number) => {
       if (last.current !== null) {
         const dt = Math.min(0.1, (now - last.current) / 1000)
-        setElapsed((e) => e + dt)
+        // Unchanged state (at the limit) doesn't re-render.
+        setElapsed((e) => Math.min(limit, e + dt))
       }
       last.current = now
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [playing])
+  }, [playing, limit])
   return elapsed
 }
 
@@ -78,6 +82,10 @@ export interface FigureProps {
   className?: string
   /** Freeze at the start of this transition, showing its arrows (for review renders). */
   still?: number
+  /** How fast to move (spec 006 US2); without it, the original fixed timing. */
+  pace?: Pace
+  /** The version's seconds per repetition, which sets the speed of slow and flowing moves. */
+  secondsPerRep?: number
   /** Drawing style; defaults to the person's choice from the shell. */
   figureStyle?: FigureStyle
 }
@@ -89,28 +97,37 @@ export function Figure({
   breathing,
   className,
   still,
+  pace,
+  secondsPerRep,
   figureStyle,
 }: FigureProps) {
   const chosen = useFigureStyle()
   const doodle = (figureStyle ?? chosen) === 'doodle'
   const reduced = usePrefersReducedMotion()
-  const animate = playing && !thumbnail && still === undefined
-  const elapsed = useAnimationClock(animate)
   const n = spec.keyframes.length
+  const holdAt = spec.holdAt ?? 1
+  const timing = pace ? timingFor(pace, n, secondsPerRep) : undefined
+  const animate = playing && !thumbnail && still === undefined
+  // A hold's clock stops at its pose, so a still figure doesn't re-render every frame.
+  const holding = pace === 'hold'
+  const limit = holding && timing ? holdEntrySeconds(holdAt, timing) : Infinity
+  const elapsed = useAnimationClock(animate, limit)
 
   let phase: Phase
   if (still !== undefined) phase = { transition: still % n, k: 0, moving: true }
   else if (thumbnail) phase = { transition: 0, k: 0, moving: false }
+  else if (holding && reduced) phase = { transition: holdAt % n, k: 0, moving: false, held: true }
+  else if (holding && timing) phase = holdPhaseAt(elapsed, n, holdAt, timing)
   else if (reduced) {
     phase = { transition: Math.floor(elapsed / REDUCED_STEP_SECONDS) % n, k: 0, moving: false }
-  } else phase = phaseAt(elapsed, n)
+  } else phase = phaseAt(elapsed, n, timing)
 
   const pose = poseAt(spec, phase)
   const segs = limbSegments(pose, spec.view)
   const facing = useMemo(() => facingFor(spec), [spec])
   const lift = doodle ? DOODLE_SEAT_LIFT : 0
 
-  const arrows = thumbnail ? [] : transitionArrows(spec, phase.transition)
+  const arrows = thumbnail || phase.held ? [] : transitionArrows(spec, phase.transition)
   const ring = spec.ring ? ringPaths(spec.ring) : null
   const dot = spec.ring ? ringDot(spec.ring, n, phase) : null
   const dotEl = dot && (
@@ -123,8 +140,9 @@ export function Figure({
       strokeWidth="2"
     />
   )
-  const label = labelFor(spec, phase.transition)
-  const breath = breathFor(spec, phase.transition)
+  // Once a hold is in its pose, there's no next move: just the breathing line.
+  const label = phase.held ? null : labelFor(spec, phase.transition)
+  const breath = phase.held ? undefined : breathFor(spec, phase.transition)
 
   return (
     <figure

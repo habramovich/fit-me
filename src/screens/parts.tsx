@@ -1,9 +1,18 @@
 // Small pieces shared by several screens.
 import { useMarks } from '../app/marksContext'
-import { TECHNIQUE_LABEL, type Technique } from '../exercises/types'
+import { PACE_LABEL, TECHNIQUE_LABEL, type Pace, type Technique } from '../exercises/types'
 
 export function TechniqueTag({ technique }: { technique: Technique }) {
   return <span className={`tag tag--${technique}`}>{TECHNIQUE_LABEL[technique]}</span>
+}
+
+/** How fast to move, in words (spec 006 US2). */
+export function PaceTag({ pace }: { pace: Pace }) {
+  return (
+    <span className="tag tag--plain" aria-label={`Pace: ${PACE_LABEL[pace]}`}>
+      {PACE_LABEL[pace]}
+    </span>
+  )
 }
 
 export function Heart({ filled }: { filled: boolean }) {

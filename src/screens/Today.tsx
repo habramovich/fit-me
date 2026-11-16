@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { href, navigate } from '../app/router'
+import { usePlans } from '../app/plansContext'
 import { useSets } from '../app/setsContext'
 import { setMinutes } from '../sets/minutes'
+import { plannedLabel } from '../planner/history'
 import { ROUTINES, ROUTINE_ORDER, routineForTime } from '../planner/routines'
 import type { Profile, RoutineId } from '../profile/types'
 
@@ -17,6 +19,7 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
   const [routine, setRoutine] = useState<RoutineId>(() => routineForTime(now))
   const [minutes, setChosenMinutes] = useState(() => profile.routineMinutes[routineForTime(now)])
   const { sets, create } = useSets()
+  const { latestUnused: kept } = usePlans()
 
   const pickRoutine = (id: RoutineId) => {
     setRoutine(id)
@@ -36,6 +39,41 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
           <strong>Finish your profile</strong>
           <span className="muted small">So sessions fit your goals and focus areas.</span>
         </a>
+      )}
+
+      {kept && (
+        <section className="card stack-sm kept-plan" aria-labelledby="kept-h">
+          <h2 id="kept-h">Your planned session</h2>
+          <p>
+            {ROUTINES[kept.routine].name} · {kept.minutes} min
+            {plannedLabel(kept.plannedAt, now) && (
+              <span className="muted small"> · {plannedLabel(kept.plannedAt, now)}</span>
+            )}
+          </p>
+          {kept.notes.map((n) => (
+            <p key={n} className="muted small">
+              {n}
+            </p>
+          ))}
+          <div className="row-wrap">
+            <a
+              className="btn btn--primary"
+              href={href({
+                name: 'player',
+                routine: 'plan',
+                plan: { routine: kept.routine, minutes: kept.minutes },
+              })}
+            >
+              Start
+            </a>
+            <a
+              className="btn btn--outline"
+              href={href({ name: 'plan', plan: { routine: kept.routine, minutes: kept.minutes } })}
+            >
+              Review
+            </a>
+          </div>
+        </section>
       )}
 
       {sets && sets.length > 0 && (
@@ -93,7 +131,7 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
 
       <a
         className="btn btn--primary btn--big"
-        href={href({ name: 'plan', plan: { routine, minutes, shuffle: 0, swaps: {} } })}
+        href={href({ name: 'plan', plan: { routine, minutes } })}
       >
         Plan my {minutes}-minute {ROUTINES[routine].name.toLowerCase()}
       </a>

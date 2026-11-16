@@ -5,12 +5,15 @@ import {
   breathFor,
   face,
   facingFor,
+  holdEntrySeconds,
+  holdPhaseAt,
   interpolatePose,
   labelFor,
   limbPath,
   limbSegments,
   phaseAt,
   sideFacing,
+  timingFor,
   torsoOutline,
   ringDot,
   ringPaths,
@@ -79,6 +82,42 @@ describe('phaseAt', () => {
   })
   it('handles 3 keyframes', () => {
     expect(phaseAt(2 * (hold + move) + hold + move / 2, 3).transition).toBe(2)
+  })
+})
+
+describe('timing per pace (006 US2)', () => {
+  const cycle = (t: { hold: number; move: number }, n: number) => n * (t.hold + t.move)
+
+  it('slow: one cycle takes one repetition, with a short pause in each pose', () => {
+    const t = timingFor('slow', 2, 4)
+    expect(cycle(t, 2)).toBeCloseTo(4)
+    expect(t.hold).toBeGreaterThan(0)
+    expect(t.hold).toBeLessThan(t.move)
+    expect(cycle(timingFor('slow', 4, 6), 4)).toBeCloseTo(6)
+  })
+
+  it('flowing: never pauses; reps follow their time, timed forms move slowly', () => {
+    expect(timingFor('flowing', 2, 10)).toEqual({ hold: 0, move: 5 })
+    expect(timingFor('flowing', 2).hold).toBe(0)
+    expect(timingFor('flowing', 2).move).toBeGreaterThanOrEqual(2)
+    expect(phaseAt(0.01, 2, timingFor('flowing', 2)).moving).toBe(true)
+  })
+
+  it('brisk: a two-pose step cycle takes at most a second', () => {
+    expect(cycle(timingFor('brisk', 2), 2)).toBeLessThanOrEqual(1)
+    expect(timingFor('brisk', 2).move).toBeLessThan(timingFor('slow', 2, 3).move)
+  })
+
+  it('hold: moves into the held pose, then stays there', () => {
+    const t = timingFor('hold', 2)
+    const entry = holdEntrySeconds(1, t)
+    expect(holdPhaseAt(0, 2, 1, t)).toEqual({ transition: 0, k: 0, moving: false })
+    expect(holdPhaseAt(entry / 2 + 0.3, 2, 1, t).moving).toBe(true)
+    for (const s of [entry, entry + 5, entry + 60]) {
+      expect(holdPhaseAt(s, 2, 1, t)).toEqual({ transition: 1, k: 0, moving: false, held: true })
+    }
+    // A three-pose hold goes through the middle pose to the last.
+    expect(holdPhaseAt(holdEntrySeconds(2, t) + 1, 3, 2, t).transition).toBe(2)
   })
 })
 

@@ -28,10 +28,11 @@ local work uses the emulators with project `demo-fitme`.
 
 - `src/firebase.ts`: config and emulator wiring
 - `src/auth/`: session state machine (pure, tested), `useSession` hook, sign-in helpers
-- `src/app/`: shell, hash router, tab bar, marks context
+- `src/app/`: shell, hash router, tab bar, marks, sets and kept-plans providers
 - `src/exercises/`: content model (`types.ts`), one module per exercise in `data/`, index,
   sample routine; `exercises.test.ts` validates every exercise
 - `src/figure/`: pure geometry (`geometry.ts`, tested) and the `<Figure>` SVG renderer
+- `src/planner/`: pure planner (`plan.ts`: make, swap, repair; tested), `useKeptPlan`
 - `src/player/`: pure player machine (tested), `usePlayer`, wake lock, player screen
 - `src/data/repo/`: the only place that touches Firestore
 - `src/screens/`: one component per screen
@@ -48,7 +49,9 @@ local work uses the emulators with project `demo-fitme`.
 3. Every transition needs a label and arrows (a two-pose figure may give only the outward
    arrows; the return reverses them). Repeated movements in side view need `breath` per
    transition. Doses need a target inside the recommended range. Cardio needs a `lowImpact`
-   version.
+   version. Pace (Hold, Slow and controlled, Flowing, Brisk) comes from technique and dose
+   (`paceOf`); set `pace` only for an exception. A hold stays on key pose 1 unless the figure
+   sets `holdAt`; repetitions need `secondsPerRep`, which sets the figure's speed.
 4. `npm test` validates all of it. Then look at every keyframe before asking the owner:
    `npm run render:figures` (or `FIGURES=id1,id2`) writes `figure-renders/<id>.png`, one row per
    version and one column per key pose with that move's arrows, drawn from the real `<Figure>`.
@@ -76,3 +79,6 @@ local work uses the emulators with project `demo-fitme`.
 - On Windows, run Vitest from PowerShell (`C:\…` path). From Git Bash (`c:\…`) Vitest loads
   twice and every suite fails with "failed to find the current suite".
 - Figure coordinates are easy to get subtly wrong; always look at the rendered keyframes.
+- A plan the person has seen is stored (`users/{uid}/plans`), never re-derived: the planner's
+  output depends on the date and history, so re-running it changes the session.
+- The planner waits for the real profile and marks: defaults can make kept items look unfit.

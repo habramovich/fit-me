@@ -1,8 +1,16 @@
 // Validates every exercise against specs/002-exercise-library-player/data-model.md.
 import { describe, expect, it } from 'vitest'
 import { transitionArrows } from '../figure/geometry'
-import { allExercises, estimateSeconds, formatDose, formatRange, searchExercises } from './index'
-import type { FigureSpec, Limbs, Point, Pose, Version } from './types'
+import {
+  allExercises,
+  estimateSeconds,
+  formatDose,
+  formatRange,
+  getExercise,
+  paceOf,
+  searchExercises,
+} from './index'
+import type { Exercise, FigureSpec, Limbs, Point, Pose, Version } from './types'
 
 const isPoint = (p: unknown): p is Point =>
   Array.isArray(p) &&
@@ -107,11 +115,48 @@ describe('exercise library', () => {
       if (e.harder) checkVersion(e.harder)
     })
 
+    it('has a pace that fits its dose (006 FR-007)', () => {
+      for (const v of [e.standard, e.easier, e.harder].filter(Boolean) as Version[]) {
+        const pace = paceOf(e, v)
+        if (pace === 'hold') expect(v.dose.kind, 'a hold is timed').toBe('time')
+        if (v.dose.kind === 'reps') {
+          expect(v.secondsPerRep, 'repetitions need a time per rep').toBeGreaterThan(0)
+        }
+        if (pace === 'brisk') expect(e.technique, 'brisk is for cardio').toBe('cardio')
+        if (v.figure.holdAt !== undefined) {
+          expect(pace).toBe('hold')
+          expect(v.figure.holdAt).toBeGreaterThanOrEqual(1)
+          expect(v.figure.holdAt).toBeLessThan(v.figure.keyframes.length)
+        }
+      }
+    })
+
     it('has a low-impact version if cardio (FR-002b)', () => {
       if (e.technique !== 'cardio') return
       const versions = [e.standard, e.easier, e.harder].filter(Boolean) as Version[]
       expect(versions.some((v) => v.lowImpact)).toBe(true)
     })
+  })
+})
+
+describe('pace (006 US2)', () => {
+  const pace = (id: string) => {
+    const e = getExercise(id) as Exercise
+    return paceOf(e, e.standard)
+  }
+  it('gives each kind of move its pace', () => {
+    expect(pace('childs-pose')).toBe('hold')
+    expect(pace('wall-sit')).toBe('hold')
+    expect(pace('glute-bridge')).toBe('slow')
+    expect(pace('wave-hands-like-clouds')).toBe('flowing')
+    expect(pace('tai-chi-commencement')).toBe('flowing')
+    expect(pace('cat-cow')).toBe('flowing')
+    expect(pace('march-in-place')).toBe('brisk')
+  })
+  it('lets a version or exercise override the default', () => {
+    const e = getExercise('glute-bridge') as Exercise
+    expect(paceOf(e, { ...e.standard, pace: 'flowing' })).toBe('flowing')
+    expect(paceOf({ ...e, pace: 'flowing' }, e.standard)).toBe('flowing')
   })
 })
 

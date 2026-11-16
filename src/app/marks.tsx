@@ -4,8 +4,20 @@ import { MarksContext } from './marksContext'
 
 export function MarksProvider({ uid, children }: { uid: string; children: ReactNode }) {
   const [marks, setMarks] = useState<Marks>({})
+  const [loaded, setLoaded] = useState(false)
 
-  useEffect(() => watchMarks(uid, setMarks, () => {}), [uid])
+  useEffect(
+    () =>
+      watchMarks(
+        uid,
+        (m) => {
+          setMarks(m)
+          setLoaded(true)
+        },
+        () => setLoaded(true),
+      ),
+    [uid],
+  )
 
   const setMark = (exerciseId: string, mark: Mark | null) => {
     // Optimistic: the snapshot listener confirms (or reverts) shortly after.
@@ -18,5 +30,7 @@ export function MarksProvider({ uid, children }: { uid: string; children: ReactN
     void saveMark(uid, exerciseId, mark).catch(() => {})
   }
 
-  return <MarksContext.Provider value={{ marks, setMark }}>{children}</MarksContext.Provider>
+  return (
+    <MarksContext.Provider value={{ marks, loaded, setMark }}>{children}</MarksContext.Provider>
+  )
 }

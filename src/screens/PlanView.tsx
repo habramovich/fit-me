@@ -1,14 +1,17 @@
 // The planned session: reasons, Swap, Reshuffle, Save as set, Start (spec 003 US2; 004 US1).
-import { useState } from 'react'
+// The plan is kept until it's done or changed here (spec 006 US1).
+import { useEffect, useRef, useState } from 'react'
+import { usePlans } from '../app/plansContext'
 import { href, navigate, type PlanParams } from '../app/router'
 import { useSets } from '../app/setsContext'
 import { fromPlan } from '../sets/edit'
 import { formatDose, getExercise } from '../exercises'
 import type { Phase } from '../exercises/types'
 import { Figure } from '../figure/Figure'
+import { plannedLabel } from '../planner/history'
 import type { HistorySummary } from '../planner/plan'
 import { ROUTINES } from '../planner/routines'
-import { handOffPlan, usePlan } from '../planner/usePlan'
+import { useKeptPlan } from '../planner/usePlan'
 import type { Profile } from '../profile/types'
 import { TechniqueTag } from './parts'
 
@@ -26,11 +29,23 @@ export function PlanView({
   history,
 }: {
   params: PlanParams
-  profile: Profile
+  /** null until the person's record has loaded. */
+  profile: Profile | null
   history: HistorySummary | null
 }) {
-  const result = usePlan(params, profile, history)
+  const kept = useKeptPlan(params.routine, params.minutes, profile, history)
+  const { viewed } = usePlans()
   const routine = ROUTINES[params.routine]
+  const ready = kept.status === 'ready'
+  const keptId = ready ? kept.plan.id : null
+  // Remember when it was last looked at, so Today offers the latest (once per visit).
+  const marked = useRef<string | null>(null)
+  useEffect(() => {
+    if (keptId && marked.current !== keptId) {
+      marked.current = keptId
+      viewed(keptId)
+    }
+  }, [keptId, viewed])
   const { create } = useSets()
   /** The name being typed for "Save as set", or null when not saving. */
   const [saving, setSaving] = useState<string | null>(null)
@@ -44,7 +59,7 @@ export function PlanView({
     </a>
   )
 
-  if (result === null) {
+  if (kept.status === 'loading') {
     return (
       <main className="screen">
         {back}
@@ -53,8 +68,8 @@ export function PlanView({
     )
   }
 
-  if (result.kind === 'insufficient') {
-    const s = result.suggestion
+  if (kept.status === 'insufficient') {
+    const s = kept.suggestion
     return (
       <main className="screen">
         {back}
@@ -67,7 +82,7 @@ export function PlanView({
           {s && (
             <a
               className="btn btn--primary"
-              href={href({ name: 'plan', plan: { ...params, routine: s, shuffle: 0, swaps: {} } })}
+              href={href({ name: 'plan', plan: { ...params, routine: s } })}
             >
               Plan a {ROUTINES[s].name.toLowerCase()} instead
             </a>
@@ -77,16 +92,9 @@ export function PlanView({
     )
   }
 
-  const minutes = Math.round(result.totalSeconds / 60)
-  const swap = (i: number) =>
-    href({
-      name: 'plan',
-      plan: { ...params, swaps: { ...params.swaps, [i]: (params.swaps[i] ?? 0) + 1 } },
-    })
-  const reshuffle = href({
-    name: 'plan',
-    plan: { ...params, shuffle: params.shuffle + 1, swaps: {} },
-  })
+  const { plan } = kept
+  const minutes = Math.round(kept.totalSeconds / 60)
+  const planned = plannedLabel(plan.plannedAt)
   const startHref = href({ name: 'player', routine: 'plan', plan: params })
 
   return (
@@ -95,7 +103,8 @@ export function PlanView({
       <header className="stack-sm">
         <p className="muted">{routine.name}</p>
         <h1>Your {minutes}-minute session</h1>
-        {result.shortOfTime && (
+        {planned && <p className="muted small">{planned}</p>}
+        {plan.shortOfTime && (
           <p className="muted small">
             Shorter than {params.minutes} minutes: that’s all the library has for this routine right
             now.
@@ -103,12 +112,22 @@ export function PlanView({
         )}
       </header>
 
+      {plan.notes.length > 0 && (
+        <div className="card notice" role="status">
+          {plan.notes.map((n) => (
+            <p key={n} className="small">
+              {n}
+            </p>
+          ))}
+        </div>
+      )}
+
       <ol className="plan-list">
-        {result.items.map((item, i) => {
+        {plan.items.map((item, i) => {
           const e = getExercise(item.exerciseId)!
           const v = e[item.version] ?? e.standard
           const heading =
-            i === 0 || result.items[i - 1].phase !== item.phase ? PHASE_LABEL[item.phase] : null
+            i === 0 || plan.items[i - 1].phase !== item.phase ? PHASE_LABEL[item.phase] : null
           return (
             <li key={`${i}-${item.exerciseId}`}>
               {heading && <h2 className="plan-list__phase">{heading}</h2>}
@@ -132,12 +151,17 @@ export function PlanView({
                   </span>
                   <span className="plan-item__reason">{item.reason}</span>
                 </div>
-                <a className="plan-item__swap" href={swap(i)} aria-label={`Swap ${e.name}`}>
+                <button
+                  type="button"
+                  className="plan-item__swap"
+                  aria-label={`Swap ${e.name}`}
+                  onClick={() => kept.swap(i)}
+                >
                   <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" />
                   </svg>
                   <span aria-hidden="true">Swap</span>
-                </a>
+                </button>
               </div>
             </li>
           )
@@ -145,11 +169,7 @@ export function PlanView({
       </ol>
 
       <div className="stack-sm">
-        <a
-          className="btn btn--primary btn--big"
-          href={startHref}
-          onClick={() => handOffPlan(params, result)}
-        >
+        <a className="btn btn--primary btn--big" href={startHref}>
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
             <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
           </svg>
@@ -169,7 +189,7 @@ export function PlanView({
             onSubmit={(e) => {
               e.preventDefault()
               const name = saving.trim().slice(0, 60) || routine.name
-              const id = create(name, fromPlan(result.items), `plan:${params.routine}`)
+              const id = create(name, fromPlan(plan.items), `plan:${params.routine}`)
               setSaving(null)
               navigate({ name: 'set', id })
             }}
@@ -189,9 +209,9 @@ export function PlanView({
             </button>
           </form>
         )}
-        <a className="btn btn--outline" href={reshuffle}>
+        <button type="button" className="btn btn--outline" onClick={kept.reshuffle}>
           Reshuffle
-        </a>
+        </button>
       </div>
     </main>
   )

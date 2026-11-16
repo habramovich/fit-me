@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarksProvider } from '../app/marks'
+import { PlansProvider } from '../app/plans'
 import { SetsContext, type SetsValue } from '../app/setsContext'
 import type { SavedSet } from '../data/repo/sets'
 import { EMPTY_HISTORY } from '../planner/plan'
@@ -13,7 +14,24 @@ import { PlanView } from './PlanView'
 
 const saveProfile = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('../data/repo/users', () => ({ saveProfile }))
-vi.mock('../data/repo/marks', () => ({ watchMarks: () => () => {}, setMark: vi.fn() }))
+vi.mock('../data/repo/marks', () => ({
+  watchMarks: (_uid: string, onData: (m: object) => void) => {
+    onData({})
+    return () => {}
+  },
+  setMark: vi.fn(),
+}))
+vi.mock('../data/repo/plans', () => ({
+  watchPlans: (_uid: string, onData: (p: unknown[]) => void) => {
+    onData([])
+    return () => {}
+  },
+  getPlan: async () => null,
+  savePlan: vi.fn(),
+  updatePlanItems: vi.fn(),
+  markPlanViewed: vi.fn(),
+  planId: (routine: string, minutes: number) => `${routine}-${minutes}`,
+}))
 
 const existing: SavedSet = {
   id: 's1',
@@ -34,7 +52,9 @@ function withSets(ui: React.ReactNode, over: Partial<SetsValue> = {}) {
   }
   render(
     <MarksProvider uid="u1">
-      <SetsContext.Provider value={value}>{ui}</SetsContext.Provider>
+      <PlansProvider uid="u1">
+        <SetsContext.Provider value={value}>{ui}</SetsContext.Provider>
+      </PlansProvider>
     </MarksProvider>,
   )
   return value
@@ -49,12 +69,12 @@ describe('Save as set (plan)', () => {
   it('saves the plan in order and opens the new set', async () => {
     const v = withSets(
       <PlanView
-        params={{ routine: 'calm', minutes: 15, shuffle: 0, swaps: {} }}
+        params={{ routine: 'calm', minutes: 15 }}
         profile={{ ...DEFAULT_PROFILE, setupDone: true }}
         history={EMPTY_HISTORY}
       />,
     )
-    expect(screen.getAllByText('Swap').length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Swap')).length).toBeGreaterThan(0)
     await userEvent.click(screen.getByRole('button', { name: 'Save as set' }))
     const input = screen.getByLabelText('Name for this set')
     await userEvent.clear(input)

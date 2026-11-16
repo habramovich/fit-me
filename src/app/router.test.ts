@@ -38,14 +38,14 @@ describe('router', () => {
     })
   })
 
-  it('parses plan params with swaps, clamping bad values', () => {
+  it('parses plan params, clamping bad values and ignoring old shuffle/swap params', () => {
     expect(parseRoute('#/plan?r=desk&m=5&s=2&w=1.2,3.1')).toEqual({
       name: 'plan',
-      plan: { routine: 'desk', minutes: 5, shuffle: 2, swaps: { 1: 2, 3: 1 } },
+      plan: { routine: 'desk', minutes: 5 },
     })
     expect(parseRoute('#/plan?r=nope&m=999')).toEqual({
       name: 'plan',
-      plan: { routine: 'calm', minutes: 90, shuffle: 0, swaps: {} },
+      plan: { routine: 'calm', minutes: 90 },
     })
   })
 
@@ -75,12 +75,8 @@ describe('router', () => {
       { name: 'setup', step: 2 },
       { name: 'set', id: 'abc' },
       { name: 'library', addTo: 'abc', phase: 'warmup' },
-      { name: 'plan', plan: { routine: 'strength', minutes: 20, shuffle: 3, swaps: { 0: 1 } } },
-      {
-        name: 'player',
-        routine: 'plan',
-        plan: { routine: 'calm', minutes: 15, shuffle: 0, swaps: {} },
-      },
+      { name: 'plan', plan: { routine: 'strength', minutes: 20 } },
+      { name: 'player', routine: 'plan', plan: { routine: 'calm', minutes: 15 } },
     ]
     for (const r of routes) {
       const parsed = parseRoute(href(r))

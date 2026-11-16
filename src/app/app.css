@@ -520,6 +520,8 @@
   height: var(--tap);
   border-radius: 12px;
   border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
