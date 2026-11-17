@@ -10,6 +10,7 @@ import {
   GoalsSection,
   HomeSection,
   RoutineDefaultsSection,
+  SoundSection,
   TechniquesSection,
 } from './profileSections'
 
@@ -48,6 +49,7 @@ export function Profile({
       <TechniquesSection {...props} />
       <HomeSection {...props} />
       <FigureStyleSection {...props} />
+      <SoundSection {...props} />
       <RoutineDefaultsSection {...props} />
       <AboutYouSection {...props} />
 

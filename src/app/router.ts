@@ -20,6 +20,7 @@ export type Route =
   | { name: 'schedule' }
   | { name: 'progress' }
   | { name: 'profile' }
+  | { name: 'songs' }
   | { name: 'review' }
 
 const PHASES: Phase[] = ['warmup', 'main', 'cooldown']
@@ -73,6 +74,7 @@ export function parseRoute(hash: string): Route {
     case 'schedule':
     case 'progress':
     case 'profile':
+    case 'songs':
     case 'review':
       return { name: parts[0] }
     default:

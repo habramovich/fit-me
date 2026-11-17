@@ -1,5 +1,6 @@
+import { useEffect, useMemo } from 'react'
 import type { SessionUser } from '../auth/session'
-import type { UserRecord } from '../data/repo/users'
+import { saveProfile, type UserRecord } from '../data/repo/users'
 import { FigureStyleContext } from '../figure/style'
 import { useHistory } from '../planner/usePlan'
 import { PlanPlayer } from '../player/PlanPlayer'
@@ -16,7 +17,10 @@ import { Review } from '../screens/Review'
 import { reviewEnabled } from '../screens/reviewEnabled'
 import { Setup } from '../screens/Setup'
 import { SetView } from '../screens/SetView'
+import { Songs } from '../screens/Songs'
 import { Today } from '../screens/Today'
+import { setAudioWanted } from '../sound/engine'
+import { SoundPrefsContext, type SoundPrefs } from '../sound/prefs'
 import { MarksProvider } from './marks'
 import { PlansProvider } from './plans'
 import { SetsProvider } from './sets'
@@ -31,6 +35,15 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
   const history = useHistory(user.uid)
   // The planner waits for the real profile: defaults could make kept items look unfit.
   const plannerProfile = record !== null ? profile : null
+  const sound: SoundPrefs = useMemo(
+    () => ({
+      music: profile.sessionMusic,
+      cues: profile.soundCues,
+      setMusic: (on) => void saveProfile(user.uid, { sessionMusic: on }).catch(() => {}),
+    }),
+    [profile.sessionMusic, profile.soundCues, user.uid],
+  )
+  useEffect(() => setAudioWanted(sound.music || sound.cues), [sound.music, sound.cues])
 
   // First run: setup until done (only once the record has loaded, to avoid a flash).
   const needsSetup = record !== null && !profile.setupDone
@@ -102,6 +115,9 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
     case 'profile':
       screen = <Profile user={user} record={record} profile={profile} />
       break
+    case 'songs':
+      screen = <Songs />
+      break
     case 'review':
       screen = reviewEnabled() ? <Review /> : <Today name={name} profile={profile} />
       break
@@ -113,10 +129,12 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
       <SetsProvider uid={user.uid}>
         <PlansProvider uid={user.uid}>
           <FigureStyleContext.Provider value={profile.figureStyle}>
-            <div className={fullScreen ? 'shell shell--full' : 'shell'}>
-              {screen}
-              {!fullScreen && <TabBar route={effective} />}
-            </div>
+            <SoundPrefsContext.Provider value={sound}>
+              <div className={fullScreen ? 'shell shell--full' : 'shell'}>
+                {screen}
+                {!fullScreen && <TabBar route={effective} />}
+              </div>
+            </SoundPrefsContext.Provider>
           </FigureStyleContext.Provider>
         </PlansProvider>
       </SetsProvider>

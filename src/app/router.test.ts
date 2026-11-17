@@ -71,6 +71,7 @@ describe('router', () => {
       { name: 'exercise', id: 'bird-dog' },
       { name: 'player', routine: 'single:bird-dog', version: 'harder' },
       { name: 'profile' },
+      { name: 'songs' },
       { name: 'review' },
       { name: 'setup', step: 2 },
       { name: 'set', id: 'abc' },

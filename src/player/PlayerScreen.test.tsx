@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarksProvider } from '../app/marks'
+import { SoundPrefsContext } from '../sound/prefs'
 import { PlayerScreen } from './PlayerScreen'
 
 const sessions = vi.hoisted(() => ({
@@ -16,13 +17,29 @@ const marksRepo = vi.hoisted(() => ({
   setMark: vi.fn(async () => {}),
 }))
 vi.mock('../data/repo/marks', () => marksRepo)
+const engine = vi.hoisted(() => ({
+  audioRunning: vi.fn(() => true),
+  playCue: vi.fn(),
+  startMusic: vi.fn(),
+  stopMusic: vi.fn(),
+  unlockAudio: vi.fn(),
+  setAudioWanted: vi.fn(),
+}))
+vi.mock('../sound/engine', () => engine)
 
-function renderPlayer(routine: string, version?: string) {
+function renderPlayer(
+  routine: string,
+  version?: string,
+  sound = { music: false, cues: false, setMusic: vi.fn() },
+) {
   render(
-    <MarksProvider uid="u1">
-      <PlayerScreen routine={routine} version={version} uid="u1" />
-    </MarksProvider>,
+    <SoundPrefsContext.Provider value={sound}>
+      <MarksProvider uid="u1">
+        <PlayerScreen routine={routine} version={version} uid="u1" />
+      </MarksProvider>
+    </SoundPrefsContext.Provider>,
   )
+  return sound
 }
 
 afterEach(() => {
@@ -109,5 +126,74 @@ describe('PlayerScreen', () => {
       [{ exerciseId: 'figure-four', version: 'standard', outcome: 'skipped', rating: null }],
       2,
     )
+  })
+})
+
+describe('PlayerScreen sound (009)', () => {
+  const on = (music: boolean, cues: boolean) => ({ music, cues, setMusic: vi.fn() })
+
+  it('plays no music when music is off', () => {
+    renderPlayer('single:glute-bridge')
+    expect(engine.startMusic).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Music' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('the music button saves the choice', async () => {
+    const user = userEvent.setup()
+    const sound = renderPlayer('single:glute-bridge')
+    await user.click(screen.getByRole('button', { name: 'Music' }))
+    expect(sound.setMusic).toHaveBeenCalledWith(true)
+    expect(engine.unlockAudio).toHaveBeenCalled()
+  })
+
+  it('plays the session mood, stops quickly on pause and gently at the end', async () => {
+    const user = userEvent.setup()
+    renderPlayer('single:glute-bridge', undefined, on(true, false))
+    expect(screen.getByRole('button', { name: 'Music' })).toHaveAttribute('aria-pressed', 'true')
+    // Glute bridge is a strength exercise: Steady.
+    expect(engine.startMusic).toHaveBeenLastCalledWith('steady')
+    await user.click(screen.getByRole('button', { name: 'Pause' }))
+    expect(engine.stopMusic).toHaveBeenLastCalledWith(0.3)
+    await user.click(screen.getByRole('button', { name: 'Resume' }))
+    expect(engine.startMusic).toHaveBeenLastCalledWith('steady')
+    await user.click(screen.getByRole('button', { name: 'Set done' }))
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: /Just right/ }))
+    expect(screen.getByRole('heading', { name: 'Session done' })).toBeInTheDocument()
+    expect(engine.stopMusic).toHaveBeenLastCalledWith(1.5)
+  })
+
+  it('plays cues only when cues are on', async () => {
+    const user = userEvent.setup()
+    renderPlayer('sample', undefined, on(false, true))
+    await user.click(screen.getByRole('button', { name: 'Skip exercise' }))
+    expect(engine.playCue).toHaveBeenCalledWith('start')
+    expect(engine.startMusic).not.toHaveBeenCalled()
+  })
+
+  it('plays no cues when cues are off', async () => {
+    const user = userEvent.setup()
+    renderPlayer('sample', undefined, on(true, false))
+    await user.click(screen.getByRole('button', { name: 'Skip exercise' }))
+    expect(engine.playCue).not.toHaveBeenCalled()
+  })
+
+  it('asks for a tap when the browser keeps audio off', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    engine.audioRunning.mockReturnValue(false)
+    renderPlayer('single:glute-bridge', undefined, on(true, true))
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    const tap = screen.getByRole('button', { name: 'Tap to start sound' })
+    engine.audioRunning.mockReturnValue(true)
+    act(() => {
+      tap.click()
+    })
+    expect(engine.unlockAudio).toHaveBeenCalled()
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    expect(screen.queryByRole('button', { name: 'Tap to start sound' })).not.toBeInTheDocument()
   })
 })

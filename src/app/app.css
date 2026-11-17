@@ -963,3 +963,40 @@
   color: var(--accent);
   font-weight: 600;
 }
+
+/* Profile: Sound (009) */
+.sound-hear {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Song ideas (009) */
+.song-list {
+  list-style: none;
+  margin: 0;
+}
+
+.song-list li {
+  border-bottom: 1px solid var(--divider);
+}
+
+.song-list li:last-child {
+  border-bottom: none;
+}
+
+.song {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: var(--tap);
+  justify-content: center;
+  padding: 8px 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.song__title {
+  font-weight: 600;
+  color: var(--accent);
+}
