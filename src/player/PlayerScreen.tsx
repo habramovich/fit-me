@@ -7,8 +7,12 @@ import { estimateMinutes, sampleRoutine, singleRoutine } from '../exercises/samp
 import type { Phase, VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
 import { PaceTag, TechniqueTag } from '../screens/parts'
+import { setAudioWanted, unlockAudio } from '../sound/engine'
+import { moodFor } from '../sound/mood'
+import { useSoundPrefs } from '../sound/prefs'
 import { summary } from './machine'
 import { usePlayer } from './usePlayer'
+import { useSessionSound } from './useSessionSound'
 import './player.css'
 
 const PHASE_LABEL: Record<Phase, string> = {
@@ -54,6 +58,10 @@ export function PlayerScreen({
   const sessionRoutine = routine === 'plan' && plan ? `plan:${plan.routine}` : routine
 
   const { state, dispatch, wakeLock } = usePlayer(items, sessionRoutine, uid, planId)
+  // Music (009): the mood is fixed when the player opens, like the routine.
+  const [mood] = useState(() => moodFor(sessionRoutine, items))
+  const { music, setMusic } = useSoundPrefs()
+  const sound = useSessionSound(state, mood)
 
   if (items.length === 0) {
     return (
@@ -112,7 +120,7 @@ export function PlayerScreen({
   const mainEvent = isTime ? ({ type: 'finishEarly' } as const) : ({ type: 'setDone' } as const)
 
   return (
-    <main className="player">
+    <main className="player" onPointerDown={sound.needsTap ? sound.retry : undefined}>
       <div className="player__top">
         <a href="#/today" className="icon-btn" aria-label="End session">
           <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
@@ -135,6 +143,28 @@ export function PlayerScreen({
             {state.items.length > 1 && ` · about ${estimateMinutes(state.items)} min`}
           </span>
         </div>
+        <button
+          type="button"
+          className={music ? 'icon-btn music-btn music-btn--on' : 'icon-btn music-btn'}
+          aria-label="Music"
+          aria-pressed={music}
+          title={music ? 'Music on' : 'Music off'}
+          onClick={() => {
+            // Start audio inside the tap itself, as some browsers require.
+            if (!music) {
+              setAudioWanted(true)
+              unlockAudio()
+            }
+            setMusic(!music)
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 18V5l11-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="17" cy="16" r="3" />
+            {!music && <path d="M3 3l18 18" />}
+          </svg>
+        </button>
       </div>
 
       <div className="player__body">
@@ -178,6 +208,11 @@ export function PlayerScreen({
             </div>
           )}
           {state.paused && <p className="paused-note">Paused</p>}
+          {sound.needsTap && (
+            <button type="button" className="btn btn--outline" onClick={sound.retry}>
+              Tap to start sound
+            </button>
+          )}
           {(wakeLock === 'unsupported' || wakeLock === 'refused') && (
             <p className="muted small">
               Your screen may dim during the session. A longer screen timeout helps.

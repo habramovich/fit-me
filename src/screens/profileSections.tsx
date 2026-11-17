@@ -26,6 +26,8 @@ import {
   type TryNew,
 } from '../profile/types'
 import { PICKABLE_AREAS } from '../profile/areas'
+import { previewCues, previewMood } from '../sound/engine'
+import { MOODS, MOOD_LABEL } from '../sound/mood'
 import { ChipMulti, ChipOne, Segmented, Stepper } from './controls'
 
 export interface SectionProps {
@@ -250,6 +252,65 @@ export function FigureStyleSection({ profile, onChange }: SectionProps) {
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+type OnOff = 'off' | 'on'
+const ON_OFF: OnOff[] = ['off', 'on']
+const ON_OFF_LABEL: Record<OnOff, string> = { off: 'Off', on: 'On' }
+const onOff = (b: boolean): OnOff => (b ? 'on' : 'off')
+
+/** Sound (009): music and cues in the player, previews, and song ideas. */
+export function SoundSection({ profile, onChange }: SectionProps) {
+  return (
+    <section className="stack" aria-labelledby="sound-h">
+      <h2 id="sound-h">Sound</h2>
+      <div className="card card--list">
+        <div className="row-control">
+          <span>Music during sessions</span>
+          <Segmented
+            label="Music during sessions"
+            options={ON_OFF}
+            labels={ON_OFF_LABEL}
+            value={onOff(profile.sessionMusic)}
+            onChange={(v) => onChange({ sessionMusic: v === 'on' })}
+          />
+        </div>
+        <div className="row-control">
+          <span>Sound cues</span>
+          <Segmented
+            label="Sound cues"
+            options={ON_OFF}
+            labels={ON_OFF_LABEL}
+            value={onOff(profile.soundCues)}
+            onChange={(v) => onChange({ soundCues: v === 'on' })}
+          />
+        </div>
+      </div>
+      <p className="muted small">
+        Music suits the session: Calm for calm mornings and weekends, Steady for desk breaks and
+        strength, Upbeat for cardio. Cues chime as a countdown ends, at side switches and before the
+        next exercise.
+      </p>
+      <h3 className="small">Hear a sample</h3>
+      <div className="sound-hear">
+        {MOODS.map((m) => (
+          <button key={m} type="button" className="btn btn--outline" onClick={() => previewMood(m)}>
+            {MOOD_LABEL[m]}
+          </button>
+        ))}
+        <button type="button" className="btn btn--outline" onClick={() => previewCues()}>
+          Cues
+        </button>
+      </div>
+      <p className="muted small">
+        If cues pause music you play from another app, turn cues off while you use your own
+        playlist.
+      </p>
+      <a className="btn btn--outline" href="#/songs">
+        Song ideas for your playlist
+      </a>
     </section>
   )
 }

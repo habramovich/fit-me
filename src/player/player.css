@@ -245,3 +245,14 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* Music button (009): accent when on. */
+.music-btn {
+  flex: none;
+  color: var(--muted);
+}
+
+.music-btn--on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}

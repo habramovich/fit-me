@@ -40,6 +40,10 @@ export interface Profile {
   weeklyMinutes: number
   /** How exercise figures are drawn (007). */
   figureStyle: FigureStyle
+  /** Generated music in the player (009). */
+  sessionMusic: boolean
+  /** Sound cues in the player (009). */
+  soundCues: boolean
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -59,7 +63,11 @@ export const DEFAULT_PROFILE: Profile = {
   phasePrefs: {},
   weeklyMinutes: 90,
   figureStyle: 'classic',
+  sessionMusic: false,
+  soundCues: true,
 }
+
+const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback)
 
 /** Fills missing fields with defaults (older or partial records). */
 export function withDefaults(stored: Partial<Profile> | null | undefined): Profile {
@@ -74,6 +82,8 @@ export function withDefaults(stored: Partial<Profile> | null | undefined): Profi
     figureStyle: FIGURE_STYLES.includes(p.figureStyle as FigureStyle)
       ? (p.figureStyle as FigureStyle)
       : 'classic',
+    sessionMusic: bool(p.sessionMusic, DEFAULT_PROFILE.sessionMusic),
+    soundCues: bool(p.soundCues, DEFAULT_PROFILE.soundCues),
   }
 }
 

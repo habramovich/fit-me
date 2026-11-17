@@ -34,6 +34,8 @@ local work uses the emulators with project `demo-fitme`.
 - `src/figure/`: pure geometry (`geometry.ts`, tested) and the `<Figure>` SVG renderer
 - `src/planner/`: pure planner (`plan.ts`: make, swap, repair; tested), `useKeptPlan`
 - `src/player/`: pure player machine (tested), `usePlayer`, wake lock, player screen
+- `src/sound/`: session music and cues (009): pure mood, composer and cue rules (tested), the
+  Web Audio engine (checked by ear), song ideas; `src/player/useSessionSound.ts` drives them
 - `src/data/repo/`: the only place that touches Firestore
 - `src/screens/`: one component per screen
 - `firestore.rules` + `tests/rules/`: rules and their access-matrix tests
