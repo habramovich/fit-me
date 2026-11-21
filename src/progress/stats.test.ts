@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { estimateSeconds, getExercise } from '../exercises'
 import type { SessionItem } from '../data/repo/sessions'
+import type { Attendance } from '../schedule/types'
 import {
   areaCoverage,
+  classSessions,
   recentList,
   routineLabel,
   sessionMinutes,
@@ -236,5 +238,60 @@ describe('routineLabel', () => {
     expect(routineLabel('single:cat-cow', names)).toBe(getExercise('cat-cow')!.name)
     expect(routineLabel('set:x1', names)).toBe('Morning flow')
     expect(routineLabel('set:gone', names)).toBe('Saved set')
+  })
+})
+
+describe('attended classes (010)', () => {
+  const pilates = (over: Partial<Attendance> = {}): Attendance => ({
+    id: 'p_2026-11-17',
+    classId: 'p',
+    date: '2026-11-17',
+    status: 'attended',
+    minutes: 60,
+    name: 'Pilates',
+    type: 'strength',
+    start: '18:00',
+    ...over,
+  })
+
+  it('turns attended records into sessions at the class time, leaving out skipped ones', () => {
+    const [s, ...rest] = classSessions([pilates(), pilates({ id: 'x', status: 'skipped' })])
+    expect(rest).toEqual([])
+    expect(s).toMatchObject({
+      id: 'class-p_2026-11-17',
+      routine: 'class:Pilates',
+      items: [],
+      activeSeconds: 3600,
+      classType: 'strength',
+    })
+    expect(s.startedAt).toEqual(new Date('2026-11-17T18:00:00'))
+  })
+
+  it('count toward the week, streaks and minutes per week', () => {
+    const sessions = [
+      ...classSessions([pilates()]),
+      session('2026-11-18T07:00:00', [done('cat-cow')]),
+    ]
+    expect(weekSummary(sessions, now, 120)).toMatchObject({ minutes: 70, sessions: 2 })
+    expect(streaks(sessions, now).current).toBe(2)
+    expect(weeklyMinutes(sessions, now).at(-1)?.minutes).toBe(70)
+  })
+
+  it('show in the technique mix by type, Other included, and not in body areas', () => {
+    const sessions = classSessions([
+      pilates(),
+      pilates({ id: 'o', name: 'Dance', type: 'other', minutes: 30 }),
+    ])
+    expect(techniqueMix(sessions, now)).toEqual([
+      { technique: 'strength', minutes: 60, percent: 67 },
+      { technique: 'other', minutes: 30, percent: 33 },
+    ])
+    expect(areaCoverage(sessions, now, []).worked).toEqual([])
+  })
+
+  it('are listed as classes in recent sessions', () => {
+    const [r] = recentList(classSessions([pilates()]))
+    expect(r).toMatchObject({ minutes: 60, done: 0, isClass: true })
+    expect(routineLabel('class:Pilates', () => undefined)).toBe('Pilates (class)')
   })
 })

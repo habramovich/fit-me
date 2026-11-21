@@ -2,12 +2,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMarks } from '../app/marksContext'
 import { usePlans } from '../app/plansContext'
+import { useSchedule } from '../app/scheduleContext'
 import { getPlan, planId, type KeptPlan } from '../data/repo/plans'
 import { recentSessions } from '../data/repo/sessions'
 import { allExercises } from '../exercises'
 import type { Profile, RoutineId } from '../profile/types'
+import { covers } from '../schedule/week'
 import { summariseHistory, todayKey } from './history'
 import {
+  coverNotes,
   EMPTY_HISTORY,
   makePlan,
   repairPlan,
@@ -56,7 +59,17 @@ export function useKeptPlan(
 ): KeptPlanState {
   const { uid, plans, put, setItems } = usePlans()
   const { marks, loaded: marksLoaded } = useMarks()
-  const [today] = useState(() => todayKey())
+  const [now] = useState(() => new Date())
+  const today = todayKey(now)
+  // Today's classes shape a new plan (spec 010 US4); wait for the schedule like the profile.
+  const schedule = useSchedule()
+  const covered = useMemo(
+    () =>
+      schedule.items !== null && schedule.attendance !== null
+        ? covers(schedule.items, schedule.attendance, now)
+        : null,
+    [schedule.items, schedule.attendance, now],
+  )
   const id = planId(routine, minutes)
   const watched = plans?.find((p) => p.id === id) ?? null
   const live = watched && watched.usedAt === null && watched.items.length > 0 ? watched : null
@@ -70,10 +83,10 @@ export function useKeptPlan(
   const plansLoaded = plans !== null
   const input = useMemo<Omit<PlanInput, 'generation'> | null>(
     () =>
-      plansLoaded && profile !== null && history !== null && marksLoaded
-        ? { library: allExercises, profile, routine, minutes, marks, history, today }
+      plansLoaded && profile !== null && history !== null && marksLoaded && covered !== null
+        ? { library: allExercises, profile, routine, minutes, marks, history, today, covered }
         : null,
-    [plansLoaded, profile, history, marksLoaded, routine, minutes, marks, today],
+    [plansLoaded, profile, history, marksLoaded, covered, routine, minutes, marks, today],
   )
 
   const fresh = (previous: KeptPlan | null) => {
@@ -91,7 +104,7 @@ export function useKeptPlan(
       minutes,
       generation,
       items: result.items.map((i) => ({ ...i, passed: [] })),
-      notes: [],
+      notes: result.notes,
       shortOfTime: result.shortOfTime,
       plannedAt: now,
       viewedAt: now,
@@ -146,8 +159,13 @@ export function useKeptPlan(
     status: 'ready',
     plan,
     totalSeconds: plan.items.reduce((sum, i) => sum + i.seconds, 0),
+    // A swap clears repair notes but keeps the notes about today's classes.
     swap: (index) =>
-      setItems(id, swapItem({ ...input, generation: plan.generation }, plan.items, index), []),
+      setItems(
+        id,
+        swapItem({ ...input, generation: plan.generation }, plan.items, index),
+        plan.notes.filter((n) => coverNotes(routine, input.covered).includes(n)),
+      ),
     reshuffle: () => fresh(plan),
   }
 }

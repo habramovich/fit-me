@@ -8,6 +8,7 @@ import {
   type Dose,
   type Exercise,
   type Phase,
+  type Technique,
   type Version,
   type VersionKey,
 } from '../exercises/types'
@@ -26,6 +27,13 @@ export interface HistorySummary {
 
 export const EMPTY_HISTORY: HistorySummary = { done: [], yesterday: [], recent: [] }
 
+/** A class that covers a technique for today's plan (spec 010 US4, research R6). */
+export interface Cover {
+  name: string
+  type: Technique
+  when: 'today' | 'yesterday'
+}
+
 export interface PlanInput {
   library: readonly Exercise[]
   profile: Profile
@@ -37,6 +45,8 @@ export interface PlanInput {
   today: string
   /** Seed counter of a kept plan: +1 per Reshuffle or new plan (spec 006 R3). */
   generation: number
+  /** Classes covering a technique today (spec 010 US4); empty without a schedule. */
+  covered: readonly Cover[]
 }
 
 export interface PlanItem {
@@ -54,7 +64,14 @@ export interface KeptItem extends PlanItem {
 }
 
 export type PlanResult =
-  | { kind: 'plan'; items: PlanItem[]; totalSeconds: number; shortOfTime: boolean }
+  | {
+      kind: 'plan'
+      items: PlanItem[]
+      totalSeconds: number
+      shortOfTime: boolean
+      /** Why the plan differs from usual, e.g. a class today (spec 010). */
+      notes: string[]
+    }
   | { kind: 'insufficient'; routine: RoutineId; suggestion: RoutineId | null }
 
 const PHASES: Phase[] = ['warmup', 'main', 'cooldown']
@@ -162,6 +179,47 @@ function fitsPhase(c: Candidate, phase: Phase, routine: RoutineDef, relaxed = fa
   return relaxed || c.exercise.phases.includes(phase)
 }
 
+// ---------- Classes (spec 010 US4, research R6) ----------
+
+/** The technique a routine is built around: a class of that type doesn't lighten it. */
+const BUILT_AROUND: Partial<Record<RoutineId, Technique>> = {
+  strength: 'strength',
+  cardio: 'cardio',
+}
+const OTHER_ROUTINES: Partial<Record<RoutineId, [RoutineId, RoutineId]>> = {
+  strength: ['calm', 'desk'],
+  cardio: ['calm', 'weekend'],
+}
+const COVERED_PENALTY = 2.5
+const MOBILITY_AFTER_STRENGTH = 1
+
+/** Score change from today's classes: covered techniques less, mobility after strength. */
+function coverAdjustment(
+  technique: Technique,
+  covered: readonly Cover[],
+  routine: RoutineDef,
+): number {
+  let s = 0
+  for (const c of covered) {
+    if (c.type === BUILT_AROUND[routine.id]) continue
+    if (c.type === technique) s -= COVERED_PENALTY
+    if (c.type === 'strength' && technique === 'mobility') s += MOBILITY_AFTER_STRENGTH
+  }
+  return s
+}
+
+/** Notes naming the classes a plan takes into account. */
+export function coverNotes(routineId: RoutineId, covered: readonly Cover[]): string[] {
+  return covered.map((c) => {
+    const tech = TECHNIQUE_LABEL[c.type].toLowerCase()
+    if (c.type === BUILT_AROUND[routineId]) {
+      const [a, b] = OTHER_ROUTINES[routineId]!
+      return `${c.name} ${c.when} covers ${tech}; ${ROUTINES[a].name} or ${ROUTINES[b].name} may suit better.`
+    }
+    return `Lighter on ${tech}: ${c.name} ${c.when}.`
+  })
+}
+
 // ---------- Scoring ----------
 
 interface PickState {
@@ -196,6 +254,7 @@ function score(
 
   const tech = AMOUNT_WEIGHT[profile.techniques[e.technique]]
   s += tech
+  s += coverAdjustment(e.technique, input.covered, routine)
   if (tech === 2) reasons.push([1.2, `${TECHNIQUE_LABEL[e.technique]}, which you like`])
   s += routine.techniqueBoost[e.technique] ?? 0
 
@@ -502,7 +561,13 @@ export function makePlan(input: PlanInput): PlanResult {
 
   const items: PlanItem[] = picked.map(({ score: _score, ...rest }) => rest)
   const totalSeconds = items.reduce((sum, p) => sum + p.seconds, 0)
-  return { kind: 'plan', items, totalSeconds, shortOfTime: totalSeconds < target - tolerance }
+  return {
+    kind: 'plan',
+    items,
+    totalSeconds,
+    shortOfTime: totalSeconds < target - tolerance,
+    notes: coverNotes(input.routine, input.covered),
+  }
 }
 
 // ---------- Changing a kept plan (spec 006 R3) ----------

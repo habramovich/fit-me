@@ -24,6 +24,19 @@ service cloud.firestore {
       return request.auth.uid == uid;
     }
 
+    // A repeating class or planned home session (010). The app also checks that a class ends by
+    // midnight and that days are 1–7 without repeats.
+    function validScheduleItem(d) {
+      return d.days is list && d.days.size() >= 1 && d.days.size() <= 7
+        && d.start is string && d.start.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && d.minutes is number && d.minutes >= 5
+        && ((d.kind == 'class' && d.minutes <= 240
+             && d.name is string && d.name.size() >= 1 && d.name.size() <= 40
+             && d.type in ['yoga', 'taichi', 'strength', 'mobility', 'cardio', 'other'])
+          || (d.kind == 'home' && d.minutes <= 90
+             && d.routine in ['calm', 'desk', 'strength', 'weekend', 'cardio']));
+    }
+
     // Managed by the owner in the Firebase console. A person may read only their own entry,
     // so the app can tell "not invited" from "offline".
     match /allowlist/{email} {
@@ -66,6 +79,25 @@ service cloud.firestore {
           && request.resource.data.items is list
           && request.resource.data.items.size() >= 1
           && request.resource.data.items.size() <= 40;
+      }
+
+      // Schedule (010): repeating classes and planned home sessions.
+      match /schedule/{itemId} {
+        allow read, delete: if isInvited() && isOwner(uid);
+        allow create, update: if isInvited() && isOwner(uid)
+          && validScheduleItem(request.resource.data);
+      }
+
+      // Class attendance (010): one per class per day, id `{classId}_{YYYY-MM-DD}`.
+      match /attendance/{attendanceId} {
+        allow read, delete: if isInvited() && isOwner(uid);
+        allow create, update: if isInvited() && isOwner(uid)
+          && request.resource.data.status in ['attended', 'skipped']
+          && request.resource.data.date is string
+          && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.minutes is number
+          && request.resource.data.minutes >= 5
+          && request.resource.data.minutes <= 240;
       }
 
       // One document per player run. No deletes: history is kept.

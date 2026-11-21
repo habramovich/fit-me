@@ -18,6 +18,7 @@ export type Route =
   | { name: 'player'; routine: string; version?: string; plan?: PlanParams }
   | { name: 'setup'; step: number }
   | { name: 'schedule' }
+  | { name: 'scheduleItem'; id?: string; kind?: 'class' | 'home' }
   | { name: 'progress' }
   | { name: 'profile' }
   | { name: 'songs' }
@@ -72,6 +73,13 @@ export function parseRoute(hash: string): Route {
     case 'setup':
       return { name: 'setup', step: Math.min(6, Math.max(1, Number(parts[1]) || 1)) }
     case 'schedule':
+      if (parts[1] === 'new') {
+        return parts[2] === 'class' || parts[2] === 'home'
+          ? { name: 'scheduleItem', kind: parts[2] }
+          : { name: 'schedule' }
+      }
+      if (parts[1]) return { name: 'scheduleItem', id: decodeURIComponent(parts[1]) }
+      return { name: 'schedule' }
     case 'progress':
     case 'profile':
     case 'songs':
@@ -102,6 +110,10 @@ export function href(route: Route): string {
     }
     case 'setup':
       return `#/setup/${route.step}`
+    case 'scheduleItem':
+      return route.id
+        ? `#/schedule/${encodeURIComponent(route.id)}`
+        : `#/schedule/new/${route.kind ?? 'class'}`
     default:
       return `#/${route.name}`
   }

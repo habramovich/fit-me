@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { href, navigate } from '../app/router'
 import { usePlans } from '../app/plansContext'
+import { useSchedule } from '../app/scheduleContext'
 import { useSets } from '../app/setsContext'
 import { setMinutes } from '../sets/minutes'
 import { plannedLabel } from '../planner/history'
 import { ROUTINES, ROUTINE_ORDER, routineForTime } from '../planner/routines'
 import type { Profile, RoutineId } from '../profile/types'
+import { useTodaySchedule, type TodaySchedule as TodayData } from '../schedule/useToday'
+import { attendanceFor } from '../schedule/week'
+import { AttendanceControls, ScheduleRow } from './scheduleParts'
+import '../schedule/schedule.css'
 
 const dateFormat = new Intl.DateTimeFormat(undefined, {
   weekday: 'long',
@@ -15,16 +20,19 @@ const dateFormat = new Intl.DateTimeFormat(undefined, {
 const MINUTES = [5, 10, 15, 20, 30, 45]
 
 export function Today({ name, profile }: { name: string; profile: Profile }) {
-  const [now] = useState(() => new Date())
-  const [routine, setRoutine] = useState<RoutineId>(() => routineForTime(now))
-  const [minutes, setChosenMinutes] = useState(() => profile.routineMinutes[routineForTime(now)])
+  const today = useTodaySchedule()
+  const { now, choice } = today
+  // The person's own pick wins; otherwise today's planned session, else the time of day (R5).
+  const [pick, setPick] = useState<{ routine?: RoutineId; minutes?: number }>({})
+  const routine = pick.routine ?? choice?.routine ?? routineForTime(now)
+  const minutes =
+    pick.minutes ??
+    (choice && routine === choice.routine ? choice.minutes : profile.routineMinutes[routine])
   const { sets, create } = useSets()
   const { latestUnused: kept } = usePlans()
 
-  const pickRoutine = (id: RoutineId) => {
-    setRoutine(id)
-    setChosenMinutes(profile.routineMinutes[id])
-  }
+  const pickRoutine = (id: RoutineId) => setPick({ routine: id })
+  const setChosenMinutes = (m: number) => setPick({ routine, minutes: m })
   const minuteOptions = [...new Set([...MINUTES, minutes])].sort((a, b) => a - b)
 
   return (
@@ -75,6 +83,8 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
           </div>
         </section>
       )}
+
+      {today.entries.length > 0 && <TodaySchedule today={today} />}
 
       {sets && sets.length > 0 && (
         <section className="stack-sm" aria-labelledby="sets-h">
@@ -149,5 +159,45 @@ export function Today({ name, profile }: { name: string; profile: Profile }) {
         Build a set from scratch
       </button>
     </main>
+  )
+}
+
+function TodaySchedule({ today }: { today: TodayData }) {
+  const { attendance, setAttendance, clearAttendance } = useSchedule()
+  return (
+    <section className="card stack-sm today-sched" aria-labelledby="sched-h">
+      <div className="row-between">
+        <h2 id="sched-h">Today’s schedule</h2>
+        <a className="btn btn--link" href={href({ name: 'schedule' })}>
+          See the week
+        </a>
+      </div>
+      <ul className="sched-list">
+        {today.entries.map((e) => {
+          const { item, dateKey } = e.occurrence
+          if (item.kind === 'home') {
+            return (
+              <ScheduleRow
+                key={item.id}
+                entry={e}
+                to={href({ name: 'plan', plan: { routine: item.routine, minutes: item.minutes } })}
+              />
+            )
+          }
+          const record = attendanceFor(item, dateKey, attendance ?? [])
+          return (
+            <ScheduleRow key={item.id} entry={e} to={href({ name: 'scheduleItem', id: item.id })}>
+              <AttendanceControls
+                item={item}
+                date={dateKey}
+                record={record}
+                onSet={(status, m) => setAttendance(item, dateKey, status, m)}
+                onClear={() => record && clearAttendance(record.id)}
+              />
+            </ScheduleRow>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
