@@ -9,11 +9,12 @@ import { SetPlayer } from '../player/SetPlayer'
 import { withDefaults } from '../profile/types'
 import { ExerciseDetail } from '../screens/ExerciseDetail'
 import { Library } from '../screens/Library'
-import { Placeholder } from '../screens/Placeholder'
 import { PlanView } from '../screens/PlanView'
 import { Profile } from '../screens/Profile'
 import { Progress } from '../screens/Progress'
 import { Review } from '../screens/Review'
+import { Schedule } from '../screens/Schedule'
+import { ScheduleItemForm } from '../screens/ScheduleItemForm'
 import { reviewEnabled } from '../screens/reviewEnabled'
 import { Setup } from '../screens/Setup'
 import { SetView } from '../screens/SetView'
@@ -23,6 +24,7 @@ import { setAudioWanted } from '../sound/engine'
 import { SoundPrefsContext, type SoundPrefs } from '../sound/prefs'
 import { MarksProvider } from './marks'
 import { PlansProvider } from './plans'
+import { ScheduleProvider } from './schedule'
 import { SetsProvider } from './sets'
 import { useRoute } from './router'
 import { TabBar } from './TabBar'
@@ -102,10 +104,15 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
       screen = <Setup uid={user.uid} profile={profile} step={effective.step} />
       break
     case 'schedule':
+      screen = <Schedule />
+      break
+    case 'scheduleItem':
       screen = (
-        <Placeholder
-          title="Schedule"
-          text="Your classes and planned home sessions will appear here."
+        <ScheduleItemForm
+          key={effective.id ?? effective.kind}
+          id={effective.id}
+          kind={effective.kind}
+          profile={profile}
         />
       )
       break
@@ -128,14 +135,16 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
     <MarksProvider uid={user.uid}>
       <SetsProvider uid={user.uid}>
         <PlansProvider uid={user.uid}>
-          <FigureStyleContext.Provider value={profile.figureStyle}>
-            <SoundPrefsContext.Provider value={sound}>
-              <div className={fullScreen ? 'shell shell--full' : 'shell'}>
-                {screen}
-                {!fullScreen && <TabBar route={effective} />}
-              </div>
-            </SoundPrefsContext.Provider>
-          </FigureStyleContext.Provider>
+          <ScheduleProvider uid={user.uid}>
+            <FigureStyleContext.Provider value={profile.figureStyle}>
+              <SoundPrefsContext.Provider value={sound}>
+                <div className={fullScreen ? 'shell shell--full' : 'shell'}>
+                  {screen}
+                  {!fullScreen && <TabBar route={effective} />}
+                </div>
+              </SoundPrefsContext.Provider>
+            </FigureStyleContext.Provider>
+          </ScheduleProvider>
         </PlansProvider>
       </SetsProvider>
     </MarksProvider>

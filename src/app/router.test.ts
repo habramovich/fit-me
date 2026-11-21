@@ -64,6 +64,13 @@ describe('router', () => {
     expect(parseRoute('#/setup/9')).toEqual({ name: 'setup', step: 6 })
   })
 
+  it('parses schedule routes', () => {
+    expect(parseRoute('#/schedule')).toEqual({ name: 'schedule' })
+    expect(parseRoute('#/schedule/new/home')).toEqual({ name: 'scheduleItem', kind: 'home' })
+    expect(parseRoute('#/schedule/new/party')).toEqual({ name: 'schedule' })
+    expect(parseRoute('#/schedule/abc')).toEqual({ name: 'scheduleItem', id: 'abc' })
+  })
+
   it('round-trips through href', () => {
     const routes: Route[] = [
       { name: 'today' },
@@ -78,6 +85,10 @@ describe('router', () => {
       { name: 'library', addTo: 'abc', phase: 'warmup' },
       { name: 'plan', plan: { routine: 'strength', minutes: 20 } },
       { name: 'player', routine: 'plan', plan: { routine: 'calm', minutes: 15 } },
+      { name: 'schedule' },
+      { name: 'scheduleItem', kind: 'class' },
+      { name: 'scheduleItem', kind: 'home' },
+      { name: 'scheduleItem', id: 'item 1' },
     ]
     for (const r of routes) {
       const parsed = parseRoute(href(r))

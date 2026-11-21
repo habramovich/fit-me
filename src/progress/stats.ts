@@ -2,15 +2,19 @@
 // Weeks start on Monday, in local time.
 import type { PastSession } from '../data/repo/sessions'
 import { estimateSeconds, getExercise, getVersion } from '../exercises'
-import { BODY_AREA_LABEL, TECHNIQUES, type BodyArea, type Technique } from '../exercises/types'
+import { BODY_AREA_LABEL, type BodyArea } from '../exercises/types'
 import type { Rating } from '../player/machine'
 import { ROUTINES } from '../planner/routines'
 import type { RoutineId } from '../profile/types'
+import { CLASS_TYPES, type Attendance, type ClassType } from '../schedule/types'
 
 export type StatSession = Pick<
   PastSession,
   'id' | 'routine' | 'startedAt' | 'items' | 'activeSeconds'
->
+> & {
+  /** Set for an attended outside class (010); its time counts as this technique. */
+  classType?: ClassType
+}
 
 export const BODY_AREAS = Object.keys(BODY_AREA_LABEL) as BodyArea[]
 
@@ -30,8 +34,27 @@ const dayKey = (d: Date) => startOfDay(d).getTime()
 
 const doneItems = (s: StatSession) => s.items.filter((i) => i.outcome === 'done')
 
-/** A session counts once at least one exercise was done. */
-export const counts = (s: StatSession) => s.items.some((i) => i.outcome === 'done')
+/** A session counts once at least one exercise was done; an attended class always counts. */
+export const counts = (s: StatSession) =>
+  s.classType !== undefined || s.items.some((i) => i.outcome === 'done')
+
+/** Attended classes as sessions (010, research R9); skipped ones are left out. */
+export function classSessions(attendance: readonly Attendance[]): StatSession[] {
+  return attendance
+    .filter((a) => a.status === 'attended')
+    .map((a) => {
+      const [y, m, d] = a.date.split('-').map(Number)
+      const [h, min] = a.start.split(':').map(Number)
+      return {
+        id: `class-${a.id}`,
+        routine: `class:${a.name}`,
+        startedAt: new Date(y, m - 1, d, h, min),
+        items: [],
+        activeSeconds: a.minutes * 60,
+        classType: a.type,
+      }
+    })
+}
 
 export function countedSessions<T extends StatSession>(sessions: T[]): T[] {
   return sessions.filter(counts)
@@ -128,7 +151,7 @@ export function weeklyMinutes(sessions: StatSession[], now: Date, weeks = 8): We
 }
 
 export interface TechniqueShare {
-  technique: Technique
+  technique: ClassType
   minutes: number
   /** Whole percent; the shares add up to 100. */
   percent: number
@@ -140,9 +163,13 @@ export interface TechniqueShare {
  */
 export function techniqueMix(sessions: StatSession[], now: Date, weeks = 4): TechniqueShare[] {
   const from = addDays(weekStart(now), -7 * (weeks - 1)).getTime()
-  const seconds = new Map<Technique, number>()
+  const seconds = new Map<ClassType, number>()
   for (const s of countedSessions(sessions)) {
     if (s.startedAt.getTime() < from) continue
+    if (s.classType) {
+      seconds.set(s.classType, (seconds.get(s.classType) ?? 0) + sessionSeconds(s))
+      continue
+    }
     const done = doneItems(s)
     const estimates = done.map(itemSeconds)
     const totalEstimate = estimates.reduce((a, b) => a + b, 0)
@@ -153,7 +180,7 @@ export function techniqueMix(sessions: StatSession[], now: Date, weeks = 4): Tec
       seconds.set(technique, (seconds.get(technique) ?? 0) + (total * estimates[i]) / totalEstimate)
     })
   }
-  const shares = TECHNIQUES.filter((t) => (seconds.get(t) ?? 0) > 0).map((t) => ({
+  const shares = CLASS_TYPES.filter((t) => (seconds.get(t) ?? 0) > 0).map((t) => ({
     technique: t,
     seconds: seconds.get(t) ?? 0,
   }))
@@ -230,6 +257,8 @@ export interface RecentSession {
   done: number
   skipped: number
   ratings: Record<Rating, number>
+  /** An attended outside class (010). */
+  isClass: boolean
 }
 
 /** The `n` most recent counted sessions, newest first. */
@@ -249,6 +278,7 @@ export function recentList(sessions: StatSession[], n = 10): RecentSession[] {
         done: doneItems(s).length,
         skipped: s.items.filter((i) => i.outcome === 'skipped').length,
         ratings,
+        isClass: s.classType !== undefined,
       }
     })
 }
@@ -256,6 +286,7 @@ export function recentList(sessions: StatSession[], n = 10): RecentSession[] {
 /** A readable name for a session's routine string. */
 export function routineLabel(routine: string, setName: (id: string) => string | undefined): string {
   if (routine === 'sample') return 'Sample routine'
+  if (routine.startsWith('class:')) return `${routine.slice(6)} (class)`
   if (routine.startsWith('plan:')) {
     return ROUTINES[routine.slice(5) as RoutineId]?.name ?? 'Planned session'
   }

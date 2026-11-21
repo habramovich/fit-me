@@ -2,12 +2,14 @@ import {
   collection,
   doc,
   getDocs,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
   where,
+  type DocumentData,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import type { VersionKey } from '../../exercises/types'
@@ -58,27 +60,50 @@ export interface PastSession {
   activeSeconds: number | null
 }
 
+function sessionFromData(id: string, data: DocumentData, now: Date): PastSession {
+  return {
+    id,
+    routine: typeof data.routine === 'string' ? data.routine : '',
+    startedAt: (data.startedAt as Timestamp | null)?.toDate() ?? now,
+    endedAt: (data.endedAt as Timestamp | null)?.toDate() ?? null,
+    items: (data.items as SessionItem[] | undefined) ?? [],
+    activeSeconds: typeof data.activeSeconds === 'number' ? data.activeSeconds : null,
+  }
+}
+
+const sessionsSince = (uid: string, since: Date) =>
+  query(
+    collection(db, 'users', uid, 'sessions'),
+    where('startedAt', '>=', Timestamp.fromDate(since)),
+  )
+
 /** Sessions started in the last `days` days (served from the offline cache when offline). */
 export async function recentSessions(
   uid: string,
   days: number,
   now = new Date(),
 ): Promise<PastSession[]> {
-  const since = Timestamp.fromDate(new Date(now.getTime() - days * 86_400_000))
-  const snap = await getDocs(
-    query(collection(db, 'users', uid, 'sessions'), where('startedAt', '>=', since)),
+  const snap = await getDocs(sessionsSince(uid, new Date(now.getTime() - days * 86_400_000)))
+  return snap.docs.map((d) => sessionFromData(d.id, d.data({ serverTimestamps: 'estimate' }), now))
+}
+
+/** Subscribes to sessions started since `since` (spec 010: live "done" ticks). */
+export function watchSessionsSince(
+  uid: string,
+  since: Date,
+  onData: (sessions: PastSession[]) => void,
+  onError: (err: unknown) => void,
+): () => void {
+  return onSnapshot(
+    sessionsSince(uid, since),
+    (snap) =>
+      onData(
+        snap.docs.map((d) =>
+          sessionFromData(d.id, d.data({ serverTimestamps: 'estimate' }), new Date()),
+        ),
+      ),
+    onError,
   )
-  return snap.docs.map((d) => {
-    const data = d.data({ serverTimestamps: 'estimate' })
-    return {
-      id: d.id,
-      routine: typeof data.routine === 'string' ? data.routine : '',
-      startedAt: (data.startedAt as Timestamp | null)?.toDate() ?? now,
-      endedAt: (data.endedAt as Timestamp | null)?.toDate() ?? null,
-      items: (data.items as SessionItem[] | undefined) ?? [],
-      activeSeconds: typeof data.activeSeconds === 'number' ? data.activeSeconds : null,
-    }
-  })
 }
 
 export function finishSession(

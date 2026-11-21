@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { allExercises } from '../exercises'
+import { allExercises, getExercise } from '../exercises'
 import type { BodyArea, Exercise, Technique, Version } from '../exercises/types'
 import { DEFAULT_PROFILE, type Profile, type RoutineId } from '../profile/types'
 import {
+  coverNotes,
   EMPTY_HISTORY,
   makePlan,
   repairPlan,
   swapItem,
+  type Cover,
   type KeptItem,
   type PlanInput,
+  type PlanItem,
   type PlanResult,
 } from './plan'
 import { seededRandom } from './random'
@@ -97,6 +100,7 @@ function input(over: Partial<PlanInput> = {}): PlanInput {
     history: EMPTY_HISTORY,
     today: '2026-11-16',
     generation: 0,
+    covered: [],
     ...over,
   }
 }
@@ -530,5 +534,51 @@ describe('repairing a kept plan (006 FR-005)', () => {
     const r = repairPlan({ ...inp, library: tiny, marks: { [gone]: 'notForMe' } }, base)
     expect(r.items.map((i) => i.exerciseId)).toEqual(base.slice(1).map((i) => i.exerciseId))
     expect(r.notes[0]).toMatch(/nothing else fits there/)
+  })
+})
+
+describe('classes (spec 010 US4)', () => {
+  const pilates: Cover = { name: 'Pilates', type: 'strength', when: 'today' }
+  const yogaClass: Cover = { name: 'Yoga', type: 'yoga', when: 'today' }
+  const count = (items: PlanItem[], t: Technique) =>
+    items.filter((i) => getExercise(i.exerciseId)?.technique === t).length
+  const many = (over: Partial<PlanInput>) =>
+    Array.from({ length: 12 }, (_, g) =>
+      plan(makePlan(input({ library: allExercises, generation: g, ...over }))),
+    )
+  const total = (plans: { items: PlanItem[] }[], t: Technique) =>
+    plans.reduce((sum, p) => sum + count(p.items, t), 0)
+
+  it('uses less strength and more mobility on a strength-class day', () => {
+    const without = many({ routine: 'weekend', minutes: 35 })
+    const withClass = many({ routine: 'weekend', minutes: 35, covered: [pilates] })
+    expect(total(withClass, 'strength')).toBeLessThan(total(without, 'strength'))
+    expect(total(withClass, 'mobility')).toBeGreaterThan(total(without, 'mobility'))
+    expect(withClass[0].notes).toEqual(['Lighter on strength: Pilates today.'])
+  })
+
+  it('uses less yoga in a Calm morning on a yoga-class day', () => {
+    const without = many({ routine: 'calm', minutes: 20 })
+    const withClass = many({ routine: 'calm', minutes: 20, covered: [yogaClass] })
+    expect(total(withClass, 'yoga')).toBeLessThan(total(without, 'yoga'))
+  })
+
+  it('plans a Strength keeper as asked on a strength-class day, suggesting another routine', () => {
+    const without = plan(makePlan(input({ library: allExercises, routine: 'strength' })))
+    const withClass = plan(
+      makePlan(input({ library: allExercises, routine: 'strength', covered: [pilates] })),
+    )
+    expect(withClass.items).toEqual(without.items)
+    expect(withClass.notes).toEqual([
+      'Pilates today covers strength; Calm morning or Desk break may suit better.',
+    ])
+  })
+
+  it('changes nothing without classes', () => {
+    const p = plan(makePlan(input({ library: allExercises, routine: 'weekend' })))
+    expect(p.notes).toEqual([])
+    expect(coverNotes('calm', [{ ...pilates, when: 'yesterday' }])).toEqual([
+      'Lighter on strength: Pilates yesterday.',
+    ])
   })
 })
