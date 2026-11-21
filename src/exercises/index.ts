@@ -58,6 +58,24 @@ import { taiChiPunching } from './data/tai-chi-punching'
 import { flyingWildGoose } from './data/flying-wild-goose'
 import { spinningWheels } from './data/spinning-wheels'
 import { bouncingTheBall } from './data/bouncing-the-ball'
+// Batch 6: morning stretches
+import { neckSideStretch } from './data/neck-side-stretch'
+import { shoulderRolls } from './data/shoulder-rolls'
+import { standingSideStretch } from './data/standing-side-stretch'
+import { seatedSpinalTwist } from './data/seated-spinal-twist'
+import { kneeToChest } from './data/knee-to-chest'
+import { standingThighStretch } from './data/standing-thigh-stretch'
+import { hamstringStretch } from './data/hamstring-stretch'
+import { calfStretch } from './data/calf-stretch'
+import { ankleCircles } from './data/ankle-circles'
+import { singleLegBalance } from './data/single-leg-balance'
+import { forwardFold } from './data/forward-fold'
+import { crossBodyShoulderStretch } from './data/cross-body-shoulder-stretch'
+import { upperBackHug } from './data/upper-back-hug'
+import { butterfly } from './data/butterfly'
+import { sideLungeStretch } from './data/side-lunge-stretch'
+import { windshieldWipers } from './data/windshield-wipers'
+import { lowLungeHamstring } from './data/low-lunge-hamstring'
 import {
   BODY_AREA_LABEL,
   TECHNIQUE_LABEL,
@@ -125,6 +143,23 @@ export const allExercises: readonly Exercise[] = [
   flyingWildGoose,
   spinningWheels,
   bouncingTheBall,
+  neckSideStretch,
+  shoulderRolls,
+  standingSideStretch,
+  seatedSpinalTwist,
+  kneeToChest,
+  standingThighStretch,
+  hamstringStretch,
+  calfStretch,
+  ankleCircles,
+  singleLegBalance,
+  forwardFold,
+  crossBodyShoulderStretch,
+  upperBackHug,
+  butterfly,
+  sideLungeStretch,
+  windshieldWipers,
+  lowLungeHamstring,
 ]
 
 const byId = new Map(allExercises.map((e) => [e.id, e]))

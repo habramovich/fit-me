@@ -1,4 +1,4 @@
-import { limbs } from '../build'
+import { SIDE_CHAIR, SIDE_SEATED, limbs, withPose } from '../build'
 import type { Exercise, FigureSpec, Pose } from '../types'
 
 // Lying on the back, the near ankle crossed over the far knee; the far thigh is drawn toward the
@@ -28,16 +28,26 @@ const figure: FigureSpec = {
   alt: 'Lying on the back with one ankle crossed over the opposite knee; the hands hold behind the lower thigh and draw it gently toward the chest, stretching the crossed hip.',
 }
 
+// Easier: on a chair. The near ankle rests on the far knee with the near knee opening toward the
+// viewer; the body leans forward a little from the hips with a straight back.
+const S = SIDE_SEATED
+const chairCrossed: Pose = withPose(S, {
+  N: limbs([112, 80], [100, 114], [98, 120], [86, 100], [76, 98]),
+  F: limbs([108, 80], [90, 98], S.F.kn, S.F.an, S.F.to),
+})
+const chairLean: Pose = withPose(chairCrossed, {
+  head: [86, 42],
+  sh: [100, 60],
+  N: limbs([96, 86], [100, 114], [98, 120], [86, 100], [76, 98]),
+  F: limbs([92, 84], [90, 98], S.F.kn, S.F.an, S.F.to),
+})
 const easierFigure: FigureSpec = {
   view: 'side',
-  keyframes: [
-    crossed,
-    { ...crossed, N: limbs([90, 145], [116, 147], [160, 134], [156, 102], [166, 96]) },
-  ],
-  arrows: [[{ p: [168, 116], q: [176, 134], bend: -4 }]],
-  labels: ['Let the crossed knee open gently', 'Relax'],
-  nose: 'up',
-  alt: 'Lying on the back with one ankle crossed over the opposite knee and that foot on the floor; the crossed knee opens gently.',
+  props: { chair: SIDE_CHAIR },
+  keyframes: [chairCrossed, chairLean],
+  arrows: [[{ p: [100, 18], q: [80, 30], bend: -6 }]],
+  labels: ['Lean forward slightly, back straight', 'Sit tall'],
+  alt: 'Sitting on a chair, seen from the side, one ankle crossed over the opposite knee; the body leans forward slightly from the hips with a straight back.',
 }
 
 const steps = [
@@ -74,14 +84,16 @@ export const figureFour: Exercise = {
   easier: {
     dose: { kind: 'time', seconds: 20, range: [15, 30], perSide: true },
     steps: [
-      steps[0],
-      steps[1],
-      'Keep the left foot on the floor; just let the right knee open.',
-      'Hold, breathing slowly. Switch sides halfway.',
+      'Sit tall on a sturdy chair, feet flat.',
+      'Place your right ankle over your left knee and let the right knee open.',
+      'Keep your back straight and lean forward slightly from your hips.',
+      'Hold, breathing slowly, then switch sides.',
     ],
-    cues: ['Foot stays on the floor', 'Let the knee open', 'No forcing'],
+    cues: ['Ankle over the knee', 'Back straight', 'Lean only slightly'],
     breathing: 'Long, slow breaths; relax on each breath out.',
     figure: easierFigure,
+    position: 'seated',
+    equipment: ['chair'],
   },
   harder: {
     dose: { kind: 'time', seconds: 45, range: [30, 60], perSide: true },
