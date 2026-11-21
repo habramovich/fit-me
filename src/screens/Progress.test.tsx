@@ -2,9 +2,11 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ScheduleContext, type ScheduleValue } from '../app/scheduleContext'
 import { SetsContext, type SetsValue } from '../app/setsContext'
 import type { PastSession, SessionItem } from '../data/repo/sessions'
 import { DEFAULT_PROFILE } from '../profile/types'
+import type { Attendance } from '../schedule/types'
 import { Progress } from './Progress'
 
 const recentSessions = vi.hoisted(() => vi.fn(async (): Promise<PastSession[]> => []))
@@ -39,7 +41,17 @@ const session = (
   activeSeconds,
 })
 
-function renderProgress() {
+function renderProgress(attendance: Attendance[] = []) {
+  const schedule: ScheduleValue = {
+    uid: 'u1',
+    items: [],
+    attendance,
+    add: vi.fn(() => ''),
+    update: vi.fn(),
+    remove: vi.fn(),
+    setAttendance: vi.fn(),
+    clearAttendance: vi.fn(),
+  }
   const sets: SetsValue = {
     sets: [{ id: 'm1', name: 'Morning flow', source: 'manual', items: [], updatedAt: new Date() }],
     create: vi.fn(() => ''),
@@ -48,12 +60,14 @@ function renderProgress() {
     remove: vi.fn(),
   }
   render(
-    <SetsContext.Provider value={sets}>
-      <Progress
-        uid="u1"
-        profile={{ ...DEFAULT_PROFILE, weeklyMinutes: 60, focusAreas: ['shoulders', 'calves'] }}
-      />
-    </SetsContext.Provider>,
+    <ScheduleContext.Provider value={schedule}>
+      <SetsContext.Provider value={sets}>
+        <Progress
+          uid="u1"
+          profile={{ ...DEFAULT_PROFILE, weeklyMinutes: 60, focusAreas: ['shoulders', 'calves'] }}
+        />
+      </SetsContext.Provider>
+    </ScheduleContext.Provider>,
   )
 }
 
@@ -129,5 +143,29 @@ describe('Progress', () => {
       'Glute bridge',
     ])
     expect(recent[0]).toHaveTextContent('1 too easy · 1 just right')
+  })
+
+  it('counts an attended class (010)', async () => {
+    renderProgress([
+      {
+        id: 'p_2026-11-17',
+        classId: 'p',
+        date: '2026-11-17',
+        status: 'attended',
+        minutes: 45,
+        name: 'Pilates',
+        type: 'other',
+        start: '18:00',
+      },
+    ])
+    const week = await screen.findByRole('region', { name: 'This week' })
+    expect(within(week).getByText('45')).toBeInTheDocument()
+    const mix = screen.getByRole('region', { name: 'Technique mix' })
+    expect(within(mix).getByText('Other')).toBeInTheDocument()
+    const recent = within(screen.getByRole('region', { name: 'Recent sessions' })).getByRole(
+      'listitem',
+    )
+    expect(recent).toHaveTextContent('Pilates (class)')
+    expect(recent).toHaveTextContent('Class')
   })
 })

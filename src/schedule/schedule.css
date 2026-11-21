@@ -1,0 +1,179 @@
+/* Schedule tab, item form and Today's schedule card (010). Mobile first. */
+
+.sched-week {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sched-day {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sched-day--today {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.screen .sched-day__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 1rem;
+}
+
+.sched-day__today {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.sched-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sched-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--divider);
+  padding-top: 6px;
+}
+
+.sched-list > .sched-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.sched-row__main {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  grid-template-areas:
+    'time name'
+    'time meta';
+  column-gap: 10px;
+  min-height: var(--tap);
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sched-row__time {
+  grid-area: time;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sched-row__name {
+  grid-area: name;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sched-row__meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.sched-row__done {
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.sched-row--passed .sched-row__main {
+  opacity: 0.6;
+}
+
+.sched-attend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-left: calc(3.4rem + 10px);
+}
+
+.sched-attend .chip {
+  padding: 0 12px;
+}
+
+.sched-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-left: calc(3.4rem + 10px);
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--surface-sunk);
+}
+
+.sched-sheet .field input {
+  max-width: 8rem;
+}
+
+.sched-error {
+  color: var(--error);
+  font-weight: 600;
+  margin: 0;
+}
+
+.sched-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sched-fieldset legend {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.sched-form .field input[type='time'],
+.sched-form .field input[type='number'] {
+  max-width: 10rem;
+}
+
+.sched-form .field input[aria-invalid='true'],
+.sched-sheet .field input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.sched-delete {
+  color: var(--error);
+  margin-left: auto;
+}
+
+.today-sched .sched-list {
+  margin-top: 4px;
+}
+
+@media (max-width: 380px) {
+  .sched-attend {
+    padding-left: 0;
+  }
+
+  .sched-sheet {
+    margin-left: 0;
+  }
+}

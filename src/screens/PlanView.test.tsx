@@ -1,8 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MarksProvider } from '../app/marks'
 import { PlansProvider } from '../app/plans'
+import { ScheduleContext, type ScheduleValue } from '../app/scheduleContext'
 import type { KeptPlan } from '../data/repo/plans'
 import type { Marks } from '../data/repo/marks'
 import { EMPTY_HISTORY, type KeptItem } from '../planner/plan'
@@ -40,19 +41,35 @@ const profile = {
   focusAreas: ['shoulders' as const, 'hips' as const],
 }
 
+const noSchedule: Partial<ScheduleValue> = { items: [], attendance: [] }
+
 function renderPlan(
   routine: 'calm' | 'cardio',
   history: typeof EMPTY_HISTORY | null = EMPTY_HISTORY,
   over: Partial<typeof profile> = {},
+  schedule: Partial<ScheduleValue> = noSchedule,
 ) {
+  const value: ScheduleValue = {
+    uid: 'u1',
+    items: [],
+    attendance: [],
+    add: vi.fn(() => ''),
+    update: vi.fn(),
+    remove: vi.fn(),
+    setAttendance: vi.fn(),
+    clearAttendance: vi.fn(),
+    ...schedule,
+  }
   render(
     <MarksProvider uid="u1">
       <PlansProvider uid="u1">
-        <PlanView
-          params={{ routine, minutes: 15 }}
-          profile={{ ...profile, ...over }}
-          history={history}
-        />
+        <ScheduleContext.Provider value={value}>
+          <PlanView
+            params={{ routine, minutes: 15 }}
+            profile={{ ...profile, ...over }}
+            history={history}
+          />
+        </ScheduleContext.Provider>
       </PlansProvider>
     </MarksProvider>,
   )
@@ -113,6 +130,26 @@ describe('PlanView', () => {
     expect(
       screen.getAllByText(/Focus: |Favourite|New for you|Calm|Variety|which you like/).length,
     ).toBeGreaterThan(0)
+  })
+
+  it('names today’s class in a new plan, and waits for the schedule', async () => {
+    const yoga = {
+      id: 'y',
+      kind: 'class' as const,
+      name: 'Yoga',
+      type: 'yoga' as const,
+      days: [1, 2, 3, 4, 5, 6, 7] as (1 | 2 | 3 | 4 | 5 | 6 | 7)[],
+      start: '23:00',
+      minutes: 60,
+    }
+    renderPlan('calm', EMPTY_HISTORY, {}, { items: [yoga], attendance: null })
+    expect(repo.savePlan).not.toHaveBeenCalled()
+    cleanup()
+    renderPlan('calm', EMPTY_HISTORY, {}, { items: [yoga], attendance: [] })
+    expect(await screen.findByText('Lighter on yoga: Yoga today.')).toBeInTheDocument()
+    expect(repo.savePlan.mock.calls[0][1]).toMatchObject({
+      notes: ['Lighter on yoga: Yoga today.'],
+    })
   })
 
   it('shows a kept plan exactly as it was, with the day it was planned', async () => {

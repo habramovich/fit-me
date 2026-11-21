@@ -36,6 +36,9 @@ local work uses the emulators with project `demo-fitme`.
 - `src/player/`: pure player machine (tested), `usePlayer`, wake lock, player screen
 - `src/sound/`: session music and cues (009): pure mood, composer and cue rules (tested), the
   Web Audio engine (checked by ear), song ideas; `src/player/useSessionSound.ts` drives them
+- `src/schedule/`: Schedule (010): pure week rules (occurrences, today's entries, planned
+  choice, class covers for the planner, validation; tested), `useToday`; provider in
+  `src/app/schedule.tsx`, screens `Schedule` and `ScheduleItemForm`
 - `src/data/repo/`: the only place that touches Firestore
 - `src/screens/`: one component per screen
 - `firestore.rules` + `tests/rules/`: rules and their access-matrix tests

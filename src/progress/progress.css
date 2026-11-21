@@ -7,6 +7,7 @@
   --chart-taichi: #1baf7a;
   --chart-mobility: #eda100;
   --chart-cardio: #e87ba4;
+  --chart-other: #7d6bb3;
   --chart-grid: #d9d4ca;
 }
 
@@ -199,6 +200,9 @@
 }
 .prog-fill--cardio {
   background: var(--chart-cardio);
+}
+.prog-fill--other {
+  background: var(--chart-other);
 }
 
 .prog-legend {

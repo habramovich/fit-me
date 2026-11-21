@@ -6,7 +6,17 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { deleteDoc, doc, getDoc, getDocs, collection, setDoc, updateDoc } from 'firebase/firestore'
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore'
 import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 
@@ -344,6 +354,119 @@ describe('kept plans (006 rows 36–40)', () => {
 
   it('40. an uninvited user cannot create plans', async () => {
     await assertFails(setDoc(ref(as(U), U.uid), kept()))
+  })
+})
+
+describe('schedule (010 rows 41–46)', () => {
+  const pilates = (over: Record<string, unknown> = {}) => ({
+    schemaVersion: 1,
+    kind: 'class',
+    name: 'Pilates',
+    type: 'strength',
+    days: [2, 4],
+    start: '18:00',
+    minutes: 60,
+    ...over,
+  })
+  const calm = (over: Record<string, unknown> = {}) => ({
+    schemaVersion: 1,
+    kind: 'home',
+    routine: 'calm',
+    days: [1, 2, 3, 4, 5],
+    start: '07:30',
+    minutes: 15,
+    ...over,
+  })
+  const ref = (id = 'x', db = as(A), uid = A.uid) => doc(db, 'users', uid, 'schedule', id)
+
+  it('41. A can create, update, read, list and delete own items', async () => {
+    await assertSucceeds(setDoc(ref('x'), pilates()))
+    await assertSucceeds(setDoc(ref('y'), calm()))
+    await assertSucceeds(updateDoc(ref('x'), { start: '19:00', updatedAt: new Date() }))
+    await assertSucceeds(getDoc(ref('x')))
+    await assertSucceeds(getDocs(collection(as(A), 'users', A.uid, 'schedule')))
+    await assertSucceeds(deleteDoc(ref('x')))
+  })
+
+  it('42. kind must be known and days a list of 1–7', async () => {
+    await assertFails(setDoc(ref(), pilates({ kind: 'event' })))
+    await assertFails(setDoc(ref(), pilates({ days: [] })))
+    await assertFails(setDoc(ref(), pilates({ days: [1, 2, 3, 4, 5, 6, 7, 1] })))
+    await assertFails(setDoc(ref(), pilates({ days: 2 })))
+  })
+
+  it('43. start must be HH:MM and minutes in range', async () => {
+    await assertFails(setDoc(ref(), pilates({ start: '6pm' })))
+    await assertFails(setDoc(ref(), pilates({ start: '24:00' })))
+    await assertFails(setDoc(ref(), pilates({ minutes: '60' })))
+    await assertFails(setDoc(ref(), pilates({ minutes: 4 })))
+    await assertFails(setDoc(ref(), pilates({ minutes: 241 })))
+    await assertSucceeds(setDoc(ref(), pilates({ minutes: 240 })))
+    await assertFails(setDoc(ref(), calm({ minutes: 91 })))
+    await assertSucceeds(setDoc(ref(), calm({ minutes: 90 })))
+  })
+
+  it('44. class name and type, home routine must be valid', async () => {
+    const { name: _name, ...noName } = pilates()
+    await assertFails(setDoc(ref(), noName))
+    await assertFails(setDoc(ref(), pilates({ name: '' })))
+    await assertFails(setDoc(ref(), pilates({ name: 'x'.repeat(41) })))
+    await assertFails(setDoc(ref(), pilates({ type: 'pilates' })))
+    await assertFails(setDoc(ref(), calm({ routine: 'marathon' })))
+  })
+
+  it("45. A cannot read or write B's items", async () => {
+    await assertFails(getDocs(collection(as(A), 'users', B.uid, 'schedule')))
+    await assertFails(getDoc(ref('x', as(A), B.uid)))
+    await assertFails(setDoc(ref('x', as(A), B.uid), pilates()))
+  })
+
+  it('46. an uninvited user cannot create items', async () => {
+    await assertFails(setDoc(ref('x', as(U), U.uid), pilates()))
+  })
+})
+
+describe('attendance (010 rows 47–50)', () => {
+  const attended = (over: Record<string, unknown> = {}) => ({
+    schemaVersion: 1,
+    classId: 'x',
+    date: '2026-11-20',
+    status: 'attended',
+    minutes: 60,
+    name: 'Pilates',
+    type: 'strength',
+    start: '18:00',
+    ...over,
+  })
+  const ref = (db = as(A), uid = A.uid) => doc(db, 'users', uid, 'attendance', 'x_2026-11-20')
+
+  it('47. A can create, update, read, list and delete own attendance', async () => {
+    await assertSucceeds(setDoc(ref(), attended()))
+    await assertSucceeds(setDoc(ref(), attended({ status: 'skipped' }), { merge: true }))
+    await assertSucceeds(getDoc(ref()))
+    await assertSucceeds(
+      getDocs(
+        query(collection(as(A), 'users', A.uid, 'attendance'), where('date', '>=', '2026-09-21')),
+      ),
+    )
+    await assertSucceeds(deleteDoc(ref()))
+  })
+
+  it('48. status, minutes and date must be valid', async () => {
+    await assertFails(setDoc(ref(), attended({ status: 'maybe' })))
+    await assertFails(setDoc(ref(), attended({ minutes: 4 })))
+    await assertFails(setDoc(ref(), attended({ minutes: 241 })))
+    await assertFails(setDoc(ref(), attended({ date: '20 Nov' })))
+  })
+
+  it("49. A cannot read or write B's attendance", async () => {
+    await assertFails(getDocs(collection(as(A), 'users', B.uid, 'attendance')))
+    await assertFails(getDoc(ref(as(A), B.uid)))
+    await assertFails(setDoc(ref(as(A), B.uid), attended()))
+  })
+
+  it('50. an uninvited user cannot record attendance', async () => {
+    await assertFails(setDoc(ref(as(U), U.uid), attended()))
   })
 })
 

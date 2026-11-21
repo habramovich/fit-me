@@ -1,12 +1,15 @@
 // Progress tab (005): this week, trends, body areas and recent sessions.
 import { useEffect, useMemo, useState } from 'react'
 import { href } from '../app/router'
+import { useSchedule } from '../app/scheduleContext'
 import { useSets } from '../app/setsContext'
 import { recentSessions, type PastSession } from '../data/repo/sessions'
-import { BODY_AREA_LABEL, TECHNIQUE_LABEL } from '../exercises/types'
+import { BODY_AREA_LABEL } from '../exercises/types'
 import type { Profile } from '../profile/types'
+import { CLASS_TYPE_LABEL } from '../schedule/types'
 import {
   areaCoverage,
+  classSessions,
   countedSessions,
   recentList,
   routineLabel,
@@ -14,6 +17,7 @@ import {
   techniqueMix,
   weeklyMinutes,
   weekSummary,
+  type StatSession,
   type WeekMinutes,
 } from '../progress/stats'
 import '../progress/progress.css'
@@ -53,20 +57,27 @@ function useProgressSessions(uid: string): Loaded {
 
 export function Progress({ uid, profile }: { uid: string; profile: Profile }) {
   const loaded = useProgressSessions(uid)
+  const { attendance } = useSchedule()
   const [now] = useState(() => new Date())
+  // Attended classes count like sessions (010).
+  const all = useMemo(
+    () =>
+      loaded.status === 'ok' && attendance !== null
+        ? [...loaded.sessions, ...classSessions(attendance)]
+        : null,
+    [loaded, attendance],
+  )
 
   return (
     <main className="screen">
       <h1>Progress</h1>
-      {loaded.status === 'loading' && <p className="muted">Loading your sessions…</p>}
+      {loaded.status !== 'error' && !all && <p className="muted">Loading your sessions…</p>}
       {loaded.status === 'error' && (
         <p className="card" role="alert">
           Couldn’t load your sessions. Check your connection and open Progress again.
         </p>
       )}
-      {loaded.status === 'ok' && (
-        <ProgressBody sessions={loaded.sessions} now={now} profile={profile} />
-      )}
+      {all && <ProgressBody sessions={all} now={now} profile={profile} />}
     </main>
   )
 }
@@ -76,7 +87,7 @@ function ProgressBody({
   now,
   profile,
 }: {
-  sessions: PastSession[]
+  sessions: StatSession[]
   now: Date
   profile: Profile
 }) {
@@ -174,7 +185,7 @@ function ProgressBody({
               {stats.mix.map((m) => (
                 <li key={m.technique}>
                   <span className={`prog-swatch prog-fill--${m.technique}`} aria-hidden="true" />
-                  <span className="prog-legend__name">{TECHNIQUE_LABEL[m.technique]}</span>
+                  <span className="prog-legend__name">{CLASS_TYPE_LABEL[m.technique]}</span>
                   <span className="prog-legend__value">
                     {m.minutes} min · {m.percent}%
                   </span>
@@ -233,7 +244,7 @@ function ProgressBody({
                   <span>{s.minutes} min</span>
                 </div>
                 <p className="small muted">
-                  {whenFormat.format(s.startedAt)} · {s.done} done
+                  {whenFormat.format(s.startedAt)} · {s.isClass ? 'Class' : `${s.done} done`}
                   {s.skipped > 0 && ` · ${s.skipped} skipped`}
                 </p>
                 {rated.length > 0 && <p className="small">{rated.join(' · ')}</p>}

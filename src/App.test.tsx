@@ -42,6 +42,25 @@ vi.mock('./data/repo/sessions', () => ({
   recordItems: vi.fn(),
   finishSession: vi.fn(),
   recentSessions: async () => [],
+  watchSessionsSince: (_uid: string, _since: Date, onData: (s: unknown[]) => void) => {
+    onData([])
+    return () => {}
+  },
+}))
+vi.mock('./data/repo/schedule', () => ({
+  watchSchedule: (_uid: string, onData: (s: unknown[]) => void) => {
+    onData([])
+    return () => {}
+  },
+  watchAttendance: (_uid: string, _since: string, onData: (a: unknown[]) => void) => {
+    onData([])
+    return () => {}
+  },
+  createScheduleItem: () => 'new',
+  updateScheduleItem: vi.fn(),
+  deleteScheduleItem: vi.fn(),
+  setAttendance: vi.fn(),
+  clearAttendance: vi.fn(),
 }))
 
 const user = { uid: 'u1', email: 'ann@example.com', displayName: 'Ann' }
