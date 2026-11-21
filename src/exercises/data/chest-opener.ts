@@ -32,7 +32,7 @@ const figure: FigureSpec = {
 const steps = [
   'Stand tall and clasp your hands behind your back (or hold a strap).',
   'Breathe in: draw the shoulder blades together and reach the hands back; let the chest lift.',
-  'Hold for a moment, chin level.',
+  'Hold for a moment, chin level. Lift the chest without arching your lower back.',
   'Breathe out and relax.',
 ]
 
@@ -52,7 +52,7 @@ export const chestOpener: Exercise = {
   standard: {
     dose: { kind: 'reps', reps: 8, range: [6, 10], sets: 1, perSide: false },
     steps,
-    cues: ['Shoulder blades together', 'Chest lifts, chin level', 'Relax between'],
+    cues: ['Shoulder blades together', 'Chest lifts, lower back long', 'Relax between'],
     breathing: 'Breathe in as the chest opens, out as you relax.',
     figure,
     secondsPerRep: 6,
