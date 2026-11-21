@@ -6,6 +6,7 @@
   --chart-strength: #eb6834;
   --chart-taichi: #1baf7a;
   --chart-mobility: #eda100;
+  --chart-stretching: #9a6b45;
   --chart-cardio: #e87ba4;
   --chart-other: #7d6bb3;
   --chart-grid: #d9d4ca;
@@ -197,6 +198,9 @@
 }
 .prog-fill--mobility {
   background: var(--chart-mobility);
+}
+.prog-fill--stretching {
+  background: var(--chart-stretching);
 }
 .prog-fill--cardio {
   background: var(--chart-cardio);

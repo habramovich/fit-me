@@ -31,9 +31,15 @@ local work uses the emulators with project `demo-fitme`.
 - `src/app/`: shell, hash router, tab bar, marks, sets and kept-plans providers
 - `src/exercises/`: content model (`types.ts`), one module per exercise in `data/`, index,
   sample routine; `exercises.test.ts` validates every exercise
-- `src/figure/`: pure geometry (`geometry.ts`, tested) and the `<Figure>` SVG renderer
+- `src/figure/`: pure geometry (`geometry.ts`, tested) and the `<Figure>` SVG renderer; the
+  optional pose strip (`PoseStrip.tsx`, `<Figure frame={i}>`, shown per the `showPoses` profile
+  choice via `poses.ts`). The full figure keeps fixed-height breath and caption rows so the
+  player never jumps (011)
+- `src/sets/`: pure set editing (`edit.ts`: order, parts, and the person's own reps, sets and
+  seconds per item, 011; tested) and `setMinutes`
 - `src/planner/`: pure planner (`plan.ts`: make, swap, repair; tested), `useKeptPlan`
-- `src/player/`: pure player machine (tested), `usePlayer`, wake lock, player screen
+- `src/player/`: pure player machine (tested; a timed exercise starts with a 5 s `getReady`
+  phase, 011), `usePlayer`, wake lock, player screen
 - `src/sound/`: session music and cues (009): pure mood, composer and cue rules (tested), the
   Web Audio engine (checked by ear), song ideas; `src/player/useSessionSound.ts` drives them
 - `src/schedule/`: Schedule (010): pure week rules (occurrences, today's entries, planned
@@ -46,7 +52,8 @@ local work uses the emulators with project `demo-fitme`.
 ## Adding exercises
 
 1. One file in `src/exercises/data/<id>.ts`, registered in `src/exercises/index.ts`, with the
-   next `batch` number. Follow an existing file of the same view (side or front).
+   next `batch` number. Follow an existing file of the same view (side or front). Technique:
+   held stretches are `stretching`, joints moved through their range are `mobility` (011).
 2. Figure box is 250 × 180, mat top at y = 152. Side view: head left by default; `N` = near side
    (drawn dark, in front), `F` = far side (light, behind). Front view: `N` = the figure's right,
    drawn on the viewer's left. Keep limb lengths roughly constant between keyframes (thigh ≈ 42,

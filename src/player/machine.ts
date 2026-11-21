@@ -14,14 +14,15 @@ export interface Outcome {
   rating: Rating | null
 }
 
-export type PlayerPhase = 'doing' | 'switchSide' | 'rating' | 'finished'
+/** `getReady`: a short countdown before a timed exercise's clock starts (011). */
+export type PlayerPhase = 'getReady' | 'doing' | 'switchSide' | 'rating' | 'finished'
 
 export interface PlayerState {
   items: PlayItem[]
   index: number
   set: number
   side: 1 | 2
-  /** Seconds left: countdown for timed exercises, or for the side-switch prompt. */
+  /** Seconds left: countdown for timed exercises, or for the Get ready / side-switch prompt. */
   remaining: number
   paused: boolean
   phase: PlayerPhase
@@ -35,6 +36,8 @@ export type PlayerEvent =
   | { type: 'setDone' }
   | { type: 'finishEarly' }
   | { type: 'continueSide' }
+  /** Ends Get ready early. */
+  | { type: 'startNow' }
   /** `null`: done without a rating (Skip next time, spec 006 US3). */
   | { type: 'rate'; rating: Rating | null }
   | { type: 'skip' }
@@ -44,20 +47,28 @@ export type PlayerEvent =
   | { type: 'hidden' }
 
 export const SWITCH_SIDE_SECONDS = 5
+export const GET_READY_SECONDS = 5
 
 const secondsOf = (dose: Dose) => (dose.kind === 'time' ? dose.seconds : 0)
 
 function goTo(s: PlayerState, index: number): PlayerState {
   if (index >= s.items.length) return { ...s, phase: 'finished', paused: false }
+  const timed = s.items[index].dose.kind === 'time'
   return {
     ...s,
     index,
     set: 1,
     side: 1,
-    remaining: secondsOf(s.items[index].dose),
+    // A timed exercise gets a moment to move into position before its clock starts (011).
+    remaining: timed ? GET_READY_SECONDS : 0,
     paused: false,
-    phase: 'doing',
+    phase: timed ? 'getReady' : 'doing',
   }
+}
+
+/** Get ready is over: the exercise clock starts at its full time. */
+function startExercise(s: PlayerState): PlayerState {
+  return { ...s, remaining: secondsOf(s.items[s.index].dose), phase: 'doing' }
 }
 
 export function initPlayer(items: PlayItem[]): PlayerState {
@@ -108,6 +119,9 @@ export function playerReducer(s: PlayerState, e: PlayerEvent): PlayerState {
     case 'tick': {
       if (s.paused) return s
       const t = { ...s, elapsed: s.elapsed + 1 }
+      if (t.phase === 'getReady') {
+        return t.remaining <= 1 ? startExercise(t) : { ...t, remaining: t.remaining - 1 }
+      }
       if (t.phase === 'switchSide') {
         return t.remaining <= 1 ? startSide2(t) : { ...t, remaining: t.remaining - 1 }
       }
@@ -124,6 +138,8 @@ export function playerReducer(s: PlayerState, e: PlayerEvent): PlayerState {
       return complete(s)
     case 'continueSide':
       return s.phase === 'switchSide' ? startSide2(s) : s
+    case 'startNow':
+      return s.phase === 'getReady' ? startExercise(s) : s
     case 'rate':
       if (s.phase !== 'rating') return s
       return goTo(withOutcome(s, { outcome: 'done', rating: e.rating }), s.index + 1)
@@ -133,7 +149,9 @@ export function playerReducer(s: PlayerState, e: PlayerEvent): PlayerState {
       return s.index === 0 ? s : goTo(s, s.index - 1)
     case 'pause':
     case 'hidden':
-      return s.phase === 'doing' || s.phase === 'switchSide' ? { ...s, paused: true } : s
+      return s.phase === 'doing' || s.phase === 'switchSide' || s.phase === 'getReady'
+        ? { ...s, paused: true }
+        : s
     case 'resume':
       return { ...s, paused: false }
   }

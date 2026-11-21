@@ -101,3 +101,49 @@ describe('SetView', () => {
     expect(screen.getByText(/isn’t there any more/)).toBeInTheDocument()
   })
 })
+
+describe('SetView amounts (011 US3)', () => {
+  it('changes a rep item’s reps and sets', async () => {
+    const user = userEvent.setup()
+    const v = renderSet()
+    await user.click(screen.getByRole('button', { name: /change amount for Cat–cow/ }))
+    const editor = screen.getByRole('listitem', { name: 'Amount for Cat–cow' })
+    expect(within(editor).getByText('Recommended 6–10')).toBeInTheDocument()
+    await user.click(within(editor).getByRole('button', { name: 'More reps' }))
+    expect(v.saveItems).toHaveBeenLastCalledWith('s1', [
+      set.items[0],
+      { ...set.items[1], dose: { ...dose, reps: 9 } },
+      set.items[2],
+    ])
+    await user.click(within(editor).getByRole('button', { name: 'More sets' }))
+    expect(v.saveItems).toHaveBeenLastCalledWith('s1', [
+      set.items[0],
+      { ...set.items[1], dose: { ...dose, sets: 2 } },
+      set.items[2],
+    ])
+  })
+
+  it('steps a timed item by 5 seconds and flags an amount outside the range', async () => {
+    const user = userEvent.setup()
+    const timed: Dose = { kind: 'time', seconds: 45, range: [20, 45], perSide: true }
+    const v = renderSet({
+      sets: [{ ...set, items: [{ ...set.items[2], dose: timed }] }],
+    })
+    await user.click(screen.getByRole('button', { name: /change amount for Figure four/ }))
+    expect(screen.queryByRole('button', { name: 'More reps' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'More seconds' }))
+    expect(v.saveItems).toHaveBeenLastCalledWith('s1', [
+      { ...set.items[2], dose: { ...timed, seconds: 50 } },
+    ])
+    expect(screen.getByText(/Recommended 20–45 s per side/)).not.toHaveClass('dose-hint--out')
+  })
+
+  it('emphasises the hint when the amount is outside the range', async () => {
+    const user = userEvent.setup()
+    renderSet({
+      sets: [{ ...set, items: [{ ...set.items[1], dose: { ...dose, reps: 15 } }] }],
+    })
+    await user.click(screen.getByRole('button', { name: /change amount for Cat–cow/ }))
+    expect(screen.getByText(/Recommended 6–10/)).toHaveClass('dose-hint--out')
+  })
+})

@@ -44,7 +44,7 @@ const steps = [
 export const standingThighStretch: Exercise = {
   id: 'standing-thigh-stretch',
   name: 'Standing thigh stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['quads', 'hips'],
   loadsAreas: ['knees'],
   equipment: ['wall'],

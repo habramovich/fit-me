@@ -56,7 +56,7 @@ const breathing = 'Breathe into your back, between the shoulder blades.'
 export const upperBackHug: Exercise = {
   id: 'upper-back-hug',
   name: 'Upper-back hug stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['upperBack', 'shoulders'],
   loadsAreas: [],
   equipment: ['none'],

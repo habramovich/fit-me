@@ -49,7 +49,7 @@ const breathing = 'Slow breaths; let the opposite shoulder sink a little on each
 export const neckSideStretch: Exercise = {
   id: 'neck-side-stretch',
   name: 'Neck side stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['neck', 'shoulders'],
   loadsAreas: ['neck'],
   equipment: ['none'],

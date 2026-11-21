@@ -6,11 +6,11 @@ export type Cue = 'tick' | 'chime' | 'switch' | 'start'
 export function cueFor(prev: PlayerState, next: PlayerState): Cue | null {
   if (next.paused || next.phase === 'finished' || prev === next) return null
   if (next.phase === 'switchSide' && prev.phase !== 'switchSide') return 'switch'
-  // A new exercise, or the second side, begins.
-  if (
-    next.phase === 'doing' &&
-    (next.index !== prev.index || (next.side !== prev.side && next.side === 2))
-  )
+  // Get ready before a timed exercise (011) sounds like Switch sides.
+  if (next.phase === 'getReady' && (prev.phase !== 'getReady' || next.index !== prev.index))
+    return 'switch'
+  // A new exercise, the end of Get ready, or the second side: the exercise begins.
+  if (next.phase === 'doing' && (prev.phase !== 'doing' || next.index !== prev.index))
     return 'start'
   const timed = next.items[next.index]?.dose.kind === 'time'
   if (!timed || next.index !== prev.index) return null

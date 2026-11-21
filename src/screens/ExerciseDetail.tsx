@@ -4,6 +4,7 @@ import { saveProfile } from '../data/repo/users'
 import { getExercise, formatDose, formatRange, paceOf } from '../exercises'
 import { BODY_AREA_LABEL, type Phase, type VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
+import { PoseStripIfShown, PosesToggle } from '../figure/PoseStrip'
 import type { Profile } from '../profile/types'
 import { PHASE_ORDER } from '../sets/edit'
 import { AddToSet } from './AddToSet'
@@ -83,7 +84,9 @@ export function ExerciseDetail({
           pace={paceOf(exercise, version)}
           secondsPerRep={version.secondsPerRep}
         />
+        <PoseStripIfShown spec={version.figure} />
       </div>
+      <PosesToggle />
 
       <header className="stack-sm">
         <div className="row-wrap">

@@ -211,6 +211,7 @@ describe('PlanView', () => {
         taichi: 'none',
         strength: 'some',
         mobility: 'none',
+        stretching: 'none',
         cardio: 'none',
       },
     })

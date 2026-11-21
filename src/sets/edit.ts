@@ -72,3 +72,53 @@ export function removeItem(items: SetItem[], index: number): SetItem[] {
 export function fromPlan(plan: PlanItem[]): SetItem[] {
   return plan.map(({ exerciseId, version, phase, dose }) => ({ exerciseId, version, phase, dose }))
 }
+
+// ----- The person's own dose for an item (011 US3) -----
+
+export type DoseField = 'reps' | 'sets' | 'seconds'
+
+/** Limits and step for each adjustable number. */
+export const DOSE_LIMITS: Record<DoseField, { min: number; max: number; step: number }> = {
+  reps: { min: 1, max: 50, step: 1 },
+  sets: { min: 1, max: 5, step: 1 },
+  seconds: { min: 10, max: 600, step: 5 },
+}
+
+/** The fields the person can change for this kind of dose. */
+export const doseFields = (dose: Dose): DoseField[] =>
+  dose.kind === 'reps' ? ['reps', 'sets'] : ['seconds']
+
+export function doseValue(dose: Dose, field: DoseField): number | null {
+  if (dose.kind === 'reps')
+    return field === 'reps' ? dose.reps : field === 'sets' ? dose.sets : null
+  return field === 'seconds' ? dose.seconds : null
+}
+
+/**
+ * One step up or down, kept inside the limits. Seconds snap to the 5-second grid on the way.
+ * `range`, `perSide` and `repsNote` stay as they are; a field the dose doesn't have changes nothing.
+ */
+export function stepDose(dose: Dose, field: DoseField, delta: 1 | -1): Dose {
+  const value = doseValue(dose, field)
+  if (value === null) return dose
+  const { min, max, step } = DOSE_LIMITS[field]
+  const snapped =
+    delta > 0 ? Math.floor(value / step) * step + step : Math.ceil(value / step) * step - step
+  const next = Math.min(max, Math.max(min, snapped))
+  if (next === value) return dose
+  if (dose.kind === 'reps')
+    return field === 'reps' ? { ...dose, reps: next } : { ...dose, sets: next }
+  return { ...dose, seconds: next }
+}
+
+/** Whether the main number (reps or seconds) is inside the recommended range. */
+export function inRange(dose: Dose): boolean {
+  const value = dose.kind === 'reps' ? dose.reps : dose.seconds
+  return value >= dose.range[0] && value <= dose.range[1]
+}
+
+/** The items with item `index`'s dose replaced. */
+export function withDose(items: SetItem[], index: number, dose: Dose): SetItem[] {
+  if (!items[index] || items[index].dose === dose) return items
+  return items.map((item, i) => (i === index ? { ...item, dose } : item))
+}

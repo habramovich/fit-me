@@ -69,7 +69,7 @@ const breathing = 'Slow breaths; ease forward a little on each breath out.'
 export const hamstringStretch: Exercise = {
   id: 'hamstring-stretch',
   name: 'Hamstring stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['hamstrings', 'calves', 'lowerBack'],
   loadsAreas: [],
   equipment: ['none'],

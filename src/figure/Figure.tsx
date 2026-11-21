@@ -88,6 +88,11 @@ export interface FigureProps {
   secondsPerRep?: number
   /** Drawing style; defaults to the person's choice from the shell. */
   figureStyle?: FigureStyle
+  /**
+   * Pose strip (011 US6): draw key pose `frame` still, small, with the arrows of the move that
+   * starts there, and no breath row or caption.
+   */
+  frame?: number
 }
 
 export function Figure({
@@ -100,21 +105,25 @@ export function Figure({
   pace,
   secondsPerRep,
   figureStyle,
+  frame,
 }: FigureProps) {
+  /** Small and still: a card thumbnail or a pose in the strip. */
+  const compact = thumbnail || frame !== undefined
   const chosen = useFigureStyle()
   const doodle = (figureStyle ?? chosen) === 'doodle'
   const reduced = usePrefersReducedMotion()
   const n = spec.keyframes.length
   const holdAt = spec.holdAt ?? 1
   const timing = pace ? timingFor(pace, n, secondsPerRep) : undefined
-  const animate = playing && !thumbnail && still === undefined
+  const animate = playing && !compact && still === undefined
   // A hold's clock stops at its pose, so a still figure doesn't re-render every frame.
   const holding = pace === 'hold'
   const limit = holding && timing ? holdEntrySeconds(holdAt, timing) : Infinity
   const elapsed = useAnimationClock(animate, limit)
 
   let phase: Phase
-  if (still !== undefined) phase = { transition: still % n, k: 0, moving: true }
+  if (frame !== undefined) phase = { transition: frame % n, k: 0, moving: true }
+  else if (still !== undefined) phase = { transition: still % n, k: 0, moving: true }
   else if (thumbnail) phase = { transition: 0, k: 0, moving: false }
   else if (holding && reduced) phase = { transition: holdAt % n, k: 0, moving: false, held: true }
   else if (holding && timing) phase = holdPhaseAt(elapsed, n, holdAt, timing)
@@ -148,12 +157,12 @@ export function Figure({
     <figure
       className={[
         'fm-figure',
-        thumbnail ? 'fm-figure--thumb' : '',
+        compact ? 'fm-figure--thumb' : '',
         className ?? '',
         ...(doodle ? ['fm-figure--doodle'] : []),
       ].join(' ')}
     >
-      {!thumbnail && (
+      {!compact && (
         <div className="fm-figure__breath" aria-live="polite">
           {breath ? (
             <span
@@ -170,7 +179,14 @@ export function Figure({
           ) : null}
         </div>
       )}
-      <svg viewBox="0 0 250 180" role="img" aria-label={spec.alt} className="fm-figure__svg">
+      <svg
+        viewBox="0 0 250 180"
+        // In the pose strip the list describes each pose; the whole-movement text is said once.
+        role={frame !== undefined ? undefined : 'img'}
+        aria-label={frame !== undefined ? undefined : spec.alt}
+        aria-hidden={frame !== undefined ? true : undefined}
+        className="fm-figure__svg"
+      >
         <rect x="8" y="152" width="234" height="9" rx="4.5" fill="var(--figure-mat)" />
         {spec.props?.wall !== undefined && (
           <line
@@ -220,7 +236,7 @@ export function Figure({
             segs={segs}
             view={spec.view}
             facing={facing}
-            thumbnail={thumbnail}
+            thumbnail={compact}
           />
         ) : (
           <ClassicBody pose={pose} segs={segs} view={spec.view} />
@@ -245,22 +261,39 @@ export function Figure({
                   <path
                     d={line}
                     stroke="var(--arrow)"
-                    strokeWidth="3"
+                    strokeWidth={frame !== undefined ? 6 : 3}
                     strokeLinecap="round"
-                    strokeDasharray="1 6"
+                    strokeDasharray={frame !== undefined ? '1 10' : '1 6'}
                     fill="none"
                   />
-                  <path d={head} fill="var(--arrow)" />
+                  <path
+                    d={head}
+                    fill="var(--arrow)"
+                    // Small poses in the strip need a bigger head to read (011).
+                    transform={
+                      frame !== undefined
+                        ? `translate(${a.q[0]} ${a.q[1]}) scale(1.9) translate(${-a.q[0]} ${-a.q[1]})`
+                        : undefined
+                    }
+                  />
                 </g>
               )
             })}
           </g>
         )}
       </svg>
-      {!thumbnail && label && (
-        <figcaption className="fm-figure__label">
-          {phase.moving ? '' : 'Next: '}
-          {label}
+      {/* Always there, two lines tall, so a label that wraps or goes away moves nothing (011). */}
+      {!compact && (
+        <figcaption
+          className={label ? 'fm-figure__label' : 'fm-figure__label fm-figure__label--empty'}
+          aria-hidden={label ? undefined : true}
+        >
+          {label && (
+            <span className="fm-figure__label-text">
+              {phase.moving ? '' : 'Next: '}
+              {label}
+            </span>
+          )}
         </figcaption>
       )}
     </figure>

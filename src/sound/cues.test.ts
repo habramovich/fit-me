@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Dose } from '../exercises/types'
 import {
+  GET_READY_SECONDS,
   SWITCH_SIDE_SECONDS,
   initPlayer,
   playerReducer,
@@ -36,16 +37,24 @@ function play(doses: Dose[], events: PlayerEvent[]): (Cue | null)[] {
 }
 
 const ticks = (n: number): PlayerEvent[] => Array.from({ length: n }, () => ({ type: 'tick' }))
+const ready: PlayerEvent = { type: 'startNow' }
 
 describe('cueFor', () => {
   it('ticks the last 3 seconds of a hold, then chimes', () => {
-    expect(play([time(5), reps(5, 1)], ticks(5))).toEqual([null, 'tick', 'tick', 'tick', 'chime'])
+    expect(play([time(5), reps(5, 1)], [ready, ...ticks(5)])).toEqual([
+      'start',
+      null,
+      'tick',
+      'tick',
+      'tick',
+      'chime',
+    ])
   })
 
   it('plays switch, then start for the second side', () => {
-    const cues = play([time(4, true)], [...ticks(4), ...ticks(SWITCH_SIDE_SECONDS)])
-    expect(cues.slice(0, 4)).toEqual(['tick', 'tick', 'tick', 'switch'])
-    expect(cues.slice(4)).toEqual([null, null, null, null, 'start'])
+    const cues = play([time(4, true)], [ready, ...ticks(4), ...ticks(SWITCH_SIDE_SECONDS)])
+    expect(cues.slice(0, 5)).toEqual(['start', 'tick', 'tick', 'tick', 'switch'])
+    expect(cues.slice(5)).toEqual([null, null, null, null, 'start'])
   })
 
   it('plays start when the next exercise begins', () => {
@@ -76,6 +85,15 @@ describe('cueFor', () => {
   })
 
   it('does not chime when the person finishes early', () => {
-    expect(play([time(30)], [{ type: 'finishEarly' }])).toEqual([null])
+    expect(play([time(30)], [ready, { type: 'finishEarly' }])).toEqual(['start', null])
+  })
+
+  it('plays switch for Get ready before a timed exercise, then start (011)', () => {
+    const cues = play(
+      [reps(5, 1), time(30)],
+      [{ type: 'setDone' }, { type: 'rate', rating: 'right' }, ...ticks(GET_READY_SECONDS)],
+    )
+    expect(cues).toEqual([null, 'switch', null, null, null, null, 'start'])
+    expect(play([reps(5, 1), time(30)], [{ type: 'skip' }, ready])).toEqual(['switch', 'start'])
   })
 })

@@ -193,7 +193,7 @@ const OTHER_ROUTINES: Partial<Record<RoutineId, [RoutineId, RoutineId]>> = {
 const COVERED_PENALTY = 2.5
 const MOBILITY_AFTER_STRENGTH = 1
 
-/** Score change from today's classes: covered techniques less, mobility after strength. */
+/** Score change from today's classes: covered techniques less, mobility and stretching after strength. */
 function coverAdjustment(
   technique: Technique,
   covered: readonly Cover[],
@@ -203,7 +203,8 @@ function coverAdjustment(
   for (const c of covered) {
     if (c.type === BUILT_AROUND[routine.id]) continue
     if (c.type === technique) s -= COVERED_PENALTY
-    if (c.type === 'strength' && technique === 'mobility') s += MOBILITY_AFTER_STRENGTH
+    if (c.type === 'strength' && (technique === 'mobility' || technique === 'stretching'))
+      s += MOBILITY_AFTER_STRENGTH
   }
   return s
 }

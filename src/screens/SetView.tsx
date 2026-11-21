@@ -3,9 +3,23 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { goBack, href, navigate } from '../app/router'
 import { useSets } from '../app/setsContext'
 import { formatDose, getExercise } from '../exercises'
-import type { Phase } from '../exercises/types'
+import type { Dose, Phase } from '../exercises/types'
 import { Figure } from '../figure/Figure'
-import { PHASE_ORDER, moveDown, moveTo, moveUp, removeItem, type SetItem } from '../sets/edit'
+import {
+  DOSE_LIMITS,
+  PHASE_ORDER,
+  doseFields,
+  doseValue,
+  inRange,
+  moveDown,
+  moveTo,
+  moveUp,
+  removeItem,
+  stepDose,
+  withDose,
+  type DoseField,
+  type SetItem,
+} from '../sets/edit'
 import { setMinutes } from '../sets/minutes'
 
 const PHASE_LABEL: Record<Phase, string> = {
@@ -25,6 +39,8 @@ export function SetView({ id }: { id: string }) {
   const { sets, saveItems, rename, remove } = useSets()
   const [renaming, setRenaming] = useState<string | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
+  /** The item whose amount editor is open (011 US3); one at a time. */
+  const [editing, setEditing] = useState<number | null>(null)
   const sectionRefs = useRef<Partial<Record<Phase, HTMLElement | null>>>({})
   const rowRefs = useRef(new Map<number, HTMLElement>())
 
@@ -63,6 +79,11 @@ export function SetView({ id }: { id: string }) {
   const save = (next: SetItem[]) => {
     if (next !== items) saveItems(set.id, next)
   }
+  /** Moving or removing changes the indexes, so the amount editor closes. */
+  const reorder = (next: SetItem[]) => {
+    setEditing(null)
+    save(next)
+  }
 
   // ----- Drag and drop (pointer events; the handle captures the pointer) -----
   const targetAt = (from: number, y: number): Drag['target'] => {
@@ -84,6 +105,7 @@ export function SetView({ id }: { id: string }) {
   const onHandleDown = (e: ReactPointerEvent<HTMLButtonElement>, from: number) => {
     e.preventDefault()
     e.currentTarget.setPointerCapture?.(e.pointerId)
+    setEditing(null)
     setDrag({ from, startY: e.clientY, y: e.clientY, target: targetAt(from, e.clientY) })
   }
   const onHandleMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
@@ -142,7 +164,8 @@ export function SetView({ id }: { id: string }) {
           {items.length} exercises · about {setMinutes(items)} min
         </p>
         <p className="muted small">
-          Drag the handle to reorder, or use the arrows. Changes save as you go.
+          Drag the handle to reorder, or use the arrows. Tap an amount to change it. Changes save as
+          you go.
         </p>
       </header>
 
@@ -185,9 +208,12 @@ export function SetView({ id }: { id: string }) {
                   onHandleDown={onHandleDown}
                   onHandleMove={onHandleMove}
                   onHandleUp={onHandleUp}
-                  onUp={() => save(moveUp(items, r.i))}
-                  onDown={() => save(moveDown(items, r.i))}
-                  onRemove={() => save(removeItem(items, r.i))}
+                  onUp={() => reorder(moveUp(items, r.i))}
+                  onDown={() => reorder(moveDown(items, r.i))}
+                  onRemove={() => reorder(removeItem(items, r.i))}
+                  editing={editing === r.i}
+                  onToggleDose={() => setEditing(editing === r.i ? null : r.i)}
+                  onDose={(dose) => save(withDose(items, r.i, dose))}
                 />
               ))}
               {showAt === visible.length && indicator}
@@ -244,6 +270,9 @@ function SetRow({
   onUp,
   onDown,
   onRemove,
+  editing,
+  onToggleDose,
+  onDose,
 }: {
   item: SetItem
   index: number
@@ -255,6 +284,9 @@ function SetRow({
   onUp: () => void
   onDown: () => void
   onRemove: () => void
+  editing: boolean
+  onToggleDose: () => void
+  onDose: (dose: Dose) => void
 }) {
   const e = getExercise(item.exerciseId)
   const v = e?.[item.version] ?? e?.standard
@@ -290,7 +322,22 @@ function SetRow({
         <div className="set-row__body">
           <span className="set-row__name">{name}</span>
           <span className="small muted">
-            {formatDose(item.dose)}
+            {v ? (
+              <button
+                type="button"
+                className="dose-btn"
+                aria-expanded={editing}
+                aria-label={`${formatDose(item.dose)}, change amount for ${name}`}
+                onClick={onToggleDose}
+              >
+                {formatDose(item.dose)}
+                <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" />
+                </svg>
+              </button>
+            ) : (
+              formatDose(item.dose)
+            )}
             {item.version !== 'standard' && ` · ${item.version}`}
           </span>
         </div>
@@ -322,6 +369,65 @@ function SetRow({
           </button>
         </div>
       </li>
+      {editing && v && <DoseEditor name={name} dose={item.dose} onDose={onDose} />}
     </>
+  )
+}
+
+const FIELD_LABEL: Record<DoseField, string> = { reps: 'Reps', sets: 'Sets', seconds: 'Seconds' }
+
+/** Steppers for the item's own reps and sets, or seconds (011 US3). */
+function DoseEditor({
+  name,
+  dose,
+  onDose,
+}: {
+  name: string
+  dose: Dose
+  onDose: (dose: Dose) => void
+}) {
+  const [lo, hi] = dose.range
+  const unit = dose.kind === 'time' ? ' s' : dose.repsNote ? ` ${dose.repsNote}` : ''
+  const out = !inRange(dose)
+  return (
+    <li className="dose-editor" aria-label={`Amount for ${name}`}>
+      {doseFields(dose).map((field) => {
+        const value = doseValue(dose, field) ?? 0
+        const { min, max } = DOSE_LIMITS[field]
+        const label = FIELD_LABEL[field]
+        return (
+          <div key={field} className="stepper">
+            <span className="stepper__label">{label}</span>
+            <button
+              type="button"
+              className="stepper__btn"
+              aria-label={`Fewer ${label.toLowerCase()}`}
+              disabled={value <= min}
+              onClick={() => onDose(stepDose(dose, field, -1))}
+            >
+              −
+            </button>
+            <output className="stepper__value" aria-live="polite" aria-label={label}>
+              {field === 'seconds' ? `${value} s` : value}
+            </output>
+            <button
+              type="button"
+              className="stepper__btn"
+              aria-label={`More ${label.toLowerCase()}`}
+              disabled={value >= max}
+              onClick={() => onDose(stepDose(dose, field, 1))}
+            >
+              +
+            </button>
+          </div>
+        )
+      })}
+      <p className={out ? 'small dose-hint dose-hint--out' : 'small muted dose-hint'}>
+        Recommended {lo}–{hi}
+        {unit}
+        {dose.perSide ? ' per side' : ''}
+        {out ? '. Yours is outside it, which is fine if it suits you.' : ''}
+      </p>
+    </li>
   )
 }

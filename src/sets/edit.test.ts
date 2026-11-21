@@ -3,6 +3,10 @@ import type { Dose } from '../exercises/types'
 import {
   MAX_SET_ITEMS,
   addItem,
+  doseFields,
+  inRange,
+  stepDose,
+  withDose,
   fromPlan,
   moveDown,
   moveTo,
@@ -87,5 +91,59 @@ describe('set editing', () => {
       { exerciseId: 'a', version: 'easier', phase: 'warmup', dose },
       { exerciseId: 'b', version: 'standard', phase: 'main', dose },
     ])
+  })
+})
+
+describe('dose (011 US3)', () => {
+  const reps: Dose = {
+    kind: 'reps',
+    reps: 8,
+    range: [6, 10],
+    sets: 2,
+    perSide: true,
+    repsNote: 'each way',
+  }
+  const time: Dose = { kind: 'time', seconds: 30, range: [20, 45], perSide: false }
+
+  it('steps reps and sets by one, keeping the rest of the dose', () => {
+    expect(stepDose(reps, 'reps', 1)).toEqual({ ...reps, reps: 9 })
+    expect(stepDose(reps, 'sets', -1)).toEqual({ ...reps, sets: 1 })
+  })
+
+  it('stops at the limits', () => {
+    expect(stepDose({ ...reps, reps: 50 }, 'reps', 1)).toEqual({ ...reps, reps: 50 })
+    expect(stepDose({ ...reps, reps: 1 }, 'reps', -1)).toEqual({ ...reps, reps: 1 })
+    expect(stepDose({ ...reps, sets: 5 }, 'sets', 1)).toEqual({ ...reps, sets: 5 })
+    expect(stepDose({ ...reps, sets: 1 }, 'sets', -1)).toEqual({ ...reps, sets: 1 })
+    expect(stepDose({ ...time, seconds: 600 }, 'seconds', 1)).toEqual({ ...time, seconds: 600 })
+    expect(stepDose({ ...time, seconds: 10 }, 'seconds', -1)).toEqual({ ...time, seconds: 10 })
+  })
+
+  it('steps seconds by 5, snapping odd values to the grid', () => {
+    expect(stepDose(time, 'seconds', 1)).toEqual({ ...time, seconds: 35 })
+    expect(stepDose(time, 'seconds', -1)).toEqual({ ...time, seconds: 25 })
+    expect(stepDose({ ...time, seconds: 32 }, 'seconds', 1)).toEqual({ ...time, seconds: 35 })
+    expect(stepDose({ ...time, seconds: 32 }, 'seconds', -1)).toEqual({ ...time, seconds: 30 })
+  })
+
+  it('ignores a field the dose does not have', () => {
+    expect(stepDose(time, 'reps', 1)).toBe(time)
+    expect(stepDose(reps, 'seconds', 1)).toBe(reps)
+    expect(doseFields(reps)).toEqual(['reps', 'sets'])
+    expect(doseFields(time)).toEqual(['seconds'])
+  })
+
+  it('knows when the dose is outside the recommended range', () => {
+    expect(inRange(reps)).toBe(true)
+    expect(inRange({ ...reps, reps: 10 })).toBe(true)
+    expect(inRange({ ...reps, reps: 11 })).toBe(false)
+    expect(inRange({ ...time, seconds: 15 })).toBe(false)
+  })
+
+  it('changes one item only', () => {
+    const next = withDose(base, 2, time)
+    expect(next[2].dose).toBe(time)
+    expect(next.filter((_, i) => i !== 2)).toEqual(base.filter((_, i) => i !== 2))
+    expect(withDose(base, 9, time)).toBe(base)
   })
 })

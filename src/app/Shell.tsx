@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import type { SessionUser } from '../auth/session'
 import { saveProfile, type UserRecord } from '../data/repo/users'
+import { PosesPrefContext, type PosesPref } from '../figure/poses'
 import { FigureStyleContext } from '../figure/style'
 import { useHistory } from '../planner/usePlan'
 import { PlanPlayer } from '../player/PlanPlayer'
@@ -46,6 +47,13 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
     [profile.sessionMusic, profile.soundCues, user.uid],
   )
   useEffect(() => setAudioWanted(sound.music || sound.cues), [sound.music, sound.cues])
+  const poses: PosesPref = useMemo(
+    () => ({
+      show: profile.showPoses,
+      setShow: (on) => void saveProfile(user.uid, { showPoses: on }).catch(() => {}),
+    }),
+    [profile.showPoses, user.uid],
+  )
 
   // First run: setup until done (only once the record has loaded, to avoid a flash).
   const needsSetup = record !== null && !profile.setupDone
@@ -138,10 +146,12 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
           <ScheduleProvider uid={user.uid}>
             <FigureStyleContext.Provider value={profile.figureStyle}>
               <SoundPrefsContext.Provider value={sound}>
-                <div className={fullScreen ? 'shell shell--full' : 'shell'}>
-                  {screen}
-                  {!fullScreen && <TabBar route={effective} />}
-                </div>
+                <PosesPrefContext.Provider value={poses}>
+                  <div className={fullScreen ? 'shell shell--full' : 'shell'}>
+                    {screen}
+                    {!fullScreen && <TabBar route={effective} />}
+                  </div>
+                </PosesPrefContext.Provider>
               </SoundPrefsContext.Provider>
             </FigureStyleContext.Provider>
           </ScheduleProvider>

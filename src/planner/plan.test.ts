@@ -33,7 +33,7 @@ const AREAS: BodyArea[] = [
   'calves',
   'chest',
 ]
-const TECHS: Technique[] = ['yoga', 'taichi', 'strength', 'mobility', 'cardio']
+const TECHS: Technique[] = ['yoga', 'taichi', 'strength', 'mobility', 'stretching', 'cardio']
 
 const fig = allExercises[0].standard.figure
 function version(reps: number, extra: Partial<Version> = {}): Version {
@@ -554,7 +554,19 @@ describe('classes (spec 010 US4)', () => {
     const withClass = many({ routine: 'weekend', minutes: 35, covered: [pilates] })
     expect(total(withClass, 'strength')).toBeLessThan(total(without, 'strength'))
     expect(total(withClass, 'mobility')).toBeGreaterThan(total(without, 'mobility'))
+    expect(total(withClass, 'stretching')).toBeGreaterThan(total(without, 'stretching'))
     expect(withClass[0].notes).toEqual(['Lighter on strength: Pilates today.'])
+  })
+
+  it('plans no stretching when Stretching is None, and still plans mobility (011)', () => {
+    const profile = {
+      ...DEFAULT_PROFILE,
+      setupDone: true,
+      techniques: { ...DEFAULT_PROFILE.techniques, stretching: 'none' as const },
+    }
+    const plans = many({ routine: 'desk', minutes: 10, profile })
+    expect(total(plans, 'stretching')).toBe(0)
+    expect(total(plans, 'mobility')).toBeGreaterThan(0)
   })
 
   it('uses less yoga in a Calm morning on a yoga-class day', () => {
