@@ -6,6 +6,8 @@ import type { PlayItem } from './machine'
 import { estimateMinutes, sampleRoutine, singleRoutine } from '../exercises/sample'
 import type { Phase, VersionKey } from '../exercises/types'
 import { Figure } from '../figure/Figure'
+import { PoseStripIfShown, PosesToggle } from '../figure/PoseStrip'
+import { usePosesPref } from '../figure/poses'
 import { PaceTag, TechniqueTag } from '../screens/parts'
 import { setAudioWanted, unlockAudio } from '../sound/engine'
 import { moodFor } from '../sound/mood'
@@ -61,6 +63,7 @@ export function PlayerScreen({
   // Music (009): the mood is fixed when the player opens, like the routine.
   const [mood] = useState(() => moodFor(sessionRoutine, items))
   const { music, setMusic } = useSoundPrefs()
+  const poses = usePosesPref()
   const sound = useSessionSound(state, mood)
 
   if (items.length === 0) {
@@ -100,7 +103,9 @@ export function PlayerScreen({
   const dose = item.dose
   const isTime = dose.kind === 'time'
 
-  const big = isTime ? clock(state.remaining) : String(dose.reps)
+  // During Get ready the exercise clock shows its full time (011).
+  const getReady = state.phase === 'getReady'
+  const big = isTime ? clock(getReady ? dose.seconds : state.remaining) : String(dose.reps)
   const detail = [
     isTime
       ? dose.perSide
@@ -120,7 +125,10 @@ export function PlayerScreen({
   const mainEvent = isTime ? ({ type: 'finishEarly' } as const) : ({ type: 'setDone' } as const)
 
   return (
-    <main className="player" onPointerDown={sound.needsTap ? sound.retry : undefined}>
+    <main
+      className={poses.show ? 'player player--poses' : 'player'}
+      onPointerDown={sound.needsTap ? sound.retry : undefined}
+    >
       <div className="player__top">
         <a href="#/today" className="icon-btn" aria-label="End session">
           <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
@@ -143,6 +151,7 @@ export function PlayerScreen({
             {state.items.length > 1 && ` · about ${estimateMinutes(state.items)} min`}
           </span>
         </div>
+        <PosesToggle icon />
         <button
           type="button"
           className={music ? 'icon-btn music-btn music-btn--on' : 'icon-btn music-btn'}
@@ -177,6 +186,7 @@ export function PlayerScreen({
             pace={paceOf(exercise, v)}
             secondsPerRep={v.secondsPerRep}
           />
+          <PoseStripIfShown spec={v.figure} compact />
         </div>
 
         <div className="player__info">
@@ -199,15 +209,10 @@ export function PlayerScreen({
               <li key={c}>{c}</li>
             ))}
           </ul>
-          {notice && (
-            <div className="card notice notice--row" role="status">
-              <span className="small">{notice}</span>
-              <button type="button" className="btn btn--link" onClick={() => setNotice(null)}>
-                OK
-              </button>
-            </div>
-          )}
-          {state.paused && <p className="paused-note">Paused</p>}
+          {/* Keeps its line while not paused, so pausing moves nothing (011). */}
+          <p className="paused-note" aria-hidden={!state.paused} data-shown={state.paused}>
+            Paused
+          </p>
           {sound.needsTap && (
             <button type="button" className="btn btn--outline" onClick={sound.retry}>
               Tap to start sound
@@ -281,6 +286,30 @@ export function PlayerScreen({
           </div>
         </div>
       </div>
+
+      {notice && (
+        <div className="card notice notice--row player__toast" role="status">
+          <span className="small">{notice}</span>
+          <button type="button" className="btn btn--link" onClick={() => setNotice(null)}>
+            OK
+          </button>
+        </div>
+      )}
+
+      {getReady && (
+        <Sheet title="Get ready">
+          <p className="muted">
+            {exercise.name} starts in {state.remaining} s.
+          </p>
+          <button
+            type="button"
+            className="btn btn--primary btn--big"
+            onClick={() => dispatch({ type: 'startNow' })}
+          >
+            Start now
+          </button>
+        </Sheet>
+      )}
 
       {state.phase === 'switchSide' && (
         <Sheet title="Switch sides">

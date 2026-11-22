@@ -103,6 +103,9 @@ describe('PlayerScreen', () => {
   it('counts down a timed hold and pauses', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
     renderPlayer('single:figure-four')
+    act(() => {
+      screen.getByRole('button', { name: 'Start now' }).click()
+    })
     expect(screen.getByText('0:30')).toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(2000)
@@ -115,7 +118,7 @@ describe('PlayerScreen', () => {
       vi.advanceTimersByTime(3000)
     })
     expect(screen.getByText('0:28')).toBeInTheDocument()
-    expect(screen.getByText('Paused')).toBeInTheDocument()
+    expect(screen.getByText('Paused')).toHaveAttribute('data-shown', 'true')
     // Skipping saves the outcome with the active (unpaused) seconds only.
     act(() => {
       screen.getByRole('button', { name: 'Skip exercise' }).click()
@@ -126,6 +129,30 @@ describe('PlayerScreen', () => {
       [{ exerciseId: 'figure-four', version: 'standard', outcome: 'skipped', rating: null }],
       2,
     )
+  })
+})
+
+describe('PlayerScreen Get ready (011)', () => {
+  it('waits 5 s before a timed exercise, its clock full, then starts it', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    renderPlayer('single:figure-four')
+    expect(screen.getByRole('dialog', { name: 'Get ready' })).toBeInTheDocument()
+    expect(screen.getByText('Figure four stretch starts in 5 s.')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    expect(screen.getByText('Figure four stretch starts in 2 s.')).toBeInTheDocument()
+    expect(screen.getByText('0:30')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    expect(screen.queryByRole('dialog', { name: 'Get ready' })).not.toBeInTheDocument()
+    expect(screen.getByText('0:29')).toBeInTheDocument()
+  })
+
+  it('has no Get ready before a repetition exercise', () => {
+    renderPlayer('single:glute-bridge')
+    expect(screen.queryByRole('dialog', { name: 'Get ready' })).not.toBeInTheDocument()
   })
 })
 

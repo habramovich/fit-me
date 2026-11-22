@@ -16,13 +16,13 @@ export function suggestGoals(p: Pick<Profile, 'ageRange' | 'sex'>): Goal[] {
 
 /** How much each goal points to each technique. */
 const GOAL_WEIGHTS: Record<Goal, Partial<Record<Technique, number>>> = {
-  mobility: { mobility: 4, yoga: 2 },
-  flexibility: { yoga: 3, mobility: 2 },
+  mobility: { mobility: 4, yoga: 2, stretching: 1 },
+  flexibility: { yoga: 3, stretching: 3, mobility: 1 },
   stressRelief: { yoga: 1.5, taichi: 1.5 },
   balance: { taichi: 1, strength: 0.5 },
   strength: { strength: 2 },
   boneStrength: { strength: 1 },
-  posture: { mobility: 1, yoga: 1 },
+  posture: { mobility: 1, yoga: 1, stretching: 1 },
   energy: { cardio: 2 },
 }
 

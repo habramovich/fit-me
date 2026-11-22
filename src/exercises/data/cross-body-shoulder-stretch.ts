@@ -28,7 +28,7 @@ const breathing = 'Slow breaths; ease the arm a little closer on each breath out
 export const crossBodyShoulderStretch: Exercise = {
   id: 'cross-body-shoulder-stretch',
   name: 'Cross-body shoulder stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['shoulders', 'upperBack'],
   loadsAreas: ['shoulders'],
   equipment: ['none'],

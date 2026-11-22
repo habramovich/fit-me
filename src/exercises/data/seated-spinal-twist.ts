@@ -36,7 +36,7 @@ const breathing = 'Breathe in to grow tall, out as you turn; slow breaths in the
 export const seatedSpinalTwist: Exercise = {
   id: 'seated-spinal-twist',
   name: 'Seated spinal twist',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['upperBack', 'lowerBack', 'core'],
   loadsAreas: ['lowerBack'],
   equipment: ['chair'],

@@ -37,7 +37,7 @@ const breathing = 'Slow breaths; lean in a little on each breath out.'
 export const calfStretch: Exercise = {
   id: 'calf-stretch',
   name: 'Calf stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['calves', 'ankles'],
   loadsAreas: [],
   equipment: ['wall'],

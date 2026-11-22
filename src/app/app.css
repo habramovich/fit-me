@@ -216,6 +216,11 @@
   background: var(--mobility-bg);
   color: var(--mobility-fg);
 }
+
+.tag--stretching {
+  background: var(--stretching-bg);
+  color: var(--stretching-fg);
+}
 .tag--cardio {
   background: var(--cardio-bg);
   color: var(--cardio-fg);
@@ -682,6 +687,93 @@
 .set-row__name {
   font-weight: 600;
   line-height: 1.25;
+}
+
+/* The person's own amount for a set item (011 US3). */
+.dose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 8px;
+  margin-left: -8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.dose-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dose-btn[aria-expanded='true'] {
+  background: var(--accent-soft);
+}
+
+.dose-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 10px 12px;
+  margin-top: -2px;
+  background: var(--surface-sunk);
+  border-radius: 14px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper__label {
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+.stepper__btn {
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stepper__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stepper__value {
+  min-width: 3.2em;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dose-hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.dose-hint--out {
+  color: var(--warm);
+  font-weight: 600;
 }
 
 .set-row__actions {

@@ -22,6 +22,7 @@ const TECHNIQUE_MOOD: Record<Technique, Mood> = {
   yoga: 'calm',
   taichi: 'calm',
   mobility: 'calm',
+  stretching: 'calm',
   strength: 'steady',
   cardio: 'upbeat',
 }

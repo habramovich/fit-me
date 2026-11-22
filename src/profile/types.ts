@@ -44,6 +44,8 @@ export interface Profile {
   sessionMusic: boolean
   /** Sound cues in the player (009). */
   soundCues: boolean
+  /** The still row of key poses under the figure (011); hidden by default. */
+  showPoses: boolean
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -55,7 +57,14 @@ export const DEFAULT_PROFILE: Profile = {
   focusAreas: [],
   goEasyAreas: [],
   avoidAreas: [],
-  techniques: { yoga: 'some', taichi: 'some', strength: 'some', mobility: 'some', cardio: 'some' },
+  techniques: {
+    yoga: 'some',
+    taichi: 'some',
+    strength: 'some',
+    mobility: 'some',
+    stretching: 'some',
+    cardio: 'some',
+  },
   level: 'beginner',
   equipment: ['mat', 'chair', 'wall'],
   tryNew: 'mix',
@@ -65,6 +74,7 @@ export const DEFAULT_PROFILE: Profile = {
   figureStyle: 'classic',
   sessionMusic: false,
   soundCues: true,
+  showPoses: false,
 }
 
 const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback)
@@ -75,7 +85,13 @@ export function withDefaults(stored: Partial<Profile> | null | undefined): Profi
   return {
     ...DEFAULT_PROFILE,
     ...p,
-    techniques: { ...DEFAULT_PROFILE.techniques, ...(p.techniques ?? {}) },
+    techniques: {
+      ...DEFAULT_PROFILE.techniques,
+      ...(p.techniques ?? {}),
+      // Stretching split from Mobility (011): until chosen, it follows the Mobility amount.
+      stretching:
+        p.techniques?.stretching ?? p.techniques?.mobility ?? DEFAULT_PROFILE.techniques.stretching,
+    },
     routineMinutes: { ...DEFAULT_PROFILE.routineMinutes, ...(p.routineMinutes ?? {}) },
     phasePrefs: { ...(p.phasePrefs ?? {}) },
     // Missing or any other value (e.g. from a newer app) reads as Classic.
@@ -84,6 +100,7 @@ export function withDefaults(stored: Partial<Profile> | null | undefined): Profi
       : 'classic',
     sessionMusic: bool(p.sessionMusic, DEFAULT_PROFILE.sessionMusic),
     soundCues: bool(p.soundCues, DEFAULT_PROFILE.soundCues),
+    showPoses: bool(p.showPoses, DEFAULT_PROFILE.showPoses),
   }
 }
 

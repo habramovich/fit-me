@@ -31,7 +31,21 @@ describe('suggestions', () => {
   })
 
   it('suggests nothing as None', () => {
-    expect(Object.values(suggestTechniques([]))).toEqual(['some', 'some', 'some', 'some', 'some'])
+    expect(Object.values(suggestTechniques([]))).toEqual([
+      'some',
+      'some',
+      'some',
+      'some',
+      'some',
+      'some',
+    ])
+  })
+
+  it('points Flexibility to Stretching and Yoga (011)', () => {
+    const t = suggestTechniques(['flexibility'])
+    expect(t.stretching).toBe('lots')
+    expect(t.yoga).toBe('lots')
+    expect(t.mobility).toBe('some')
   })
 })
 

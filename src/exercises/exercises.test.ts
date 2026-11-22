@@ -190,3 +190,41 @@ describe('helpers', () => {
     expect(estimateSeconds(v)).toBe(8 * 2 * 2 * 4 + 20 + 10)
   })
 })
+
+describe('Stretching and Mobility (011 US4)', () => {
+  const ids = (t: Exercise['technique']) =>
+    allExercises
+      .filter((e) => e.technique === t)
+      .map((e) => e.id)
+      .sort()
+
+  it('holds the held stretches in Stretching', () => {
+    expect(ids('stretching')).toEqual([
+      'calf-stretch',
+      'cross-body-shoulder-stretch',
+      'hamstring-stretch',
+      'neck-side-stretch',
+      'seated-spinal-twist',
+      'side-lunge-stretch',
+      'standing-side-stretch',
+      'standing-thigh-stretch',
+      'upper-back-hug',
+    ])
+  })
+
+  it('keeps the moving exercises in Mobility', () => {
+    expect(ids('mobility')).toEqual([
+      'ankle-circles',
+      'chest-opener',
+      'chin-tucks',
+      'hip-circles',
+      'pelvic-tilts',
+      'seated-side-bend',
+      'shoulder-rolls',
+      'shoulder-rotations',
+      'standing-torso-twist',
+      'wall-angels',
+      'windshield-wipers',
+    ])
+  })
+})

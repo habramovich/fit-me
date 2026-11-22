@@ -37,7 +37,7 @@ const breathing = 'Slow breaths; sink a little deeper on each breath out.'
 export const sideLungeStretch: Exercise = {
   id: 'side-lunge-stretch',
   name: 'Standing side lunge stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['hips', 'quads', 'hamstrings'],
   loadsAreas: ['knees'],
   equipment: ['none'],

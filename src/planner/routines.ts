@@ -31,7 +31,7 @@ export const ROUTINES: Record<RoutineId, RoutineDef> = {
     hint: 'Breath, gentle yoga, tai chi',
     shares: { warmup: 0.3, main: 0.5, cooldown: 0.2 },
     intensities: ['gentle'],
-    techniqueBoost: { yoga: 1, taichi: 1, mobility: 1, strength: -3 },
+    techniqueBoost: { yoga: 1, taichi: 1, mobility: 1, stretching: 1, strength: -3 },
     areaBoost: [],
   },
   desk: {
@@ -43,7 +43,7 @@ export const ROUTINES: Record<RoutineId, RoutineDef> = {
     intensities: ['gentle', 'moderate'],
     positions: ['standing', 'seated'],
     equipment: ['none', 'chair', 'wall'],
-    techniqueBoost: { mobility: 1 },
+    techniqueBoost: { mobility: 1, stretching: 1 },
     areaBoost: ['hips', 'upperBack', 'chest', 'neck', 'shoulders'],
   },
   strength: {

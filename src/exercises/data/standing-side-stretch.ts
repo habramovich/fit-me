@@ -56,7 +56,7 @@ const breathing = 'Breathe into the stretched side; ease a little further on eac
 export const standingSideStretch: Exercise = {
   id: 'standing-side-stretch',
   name: 'Standing side stretch',
-  technique: 'mobility',
+  technique: 'stretching',
   worksAreas: ['core', 'shoulders', 'lowerBack', 'upperBack'],
   loadsAreas: ['shoulders'],
   equipment: ['none'],

@@ -1,14 +1,22 @@
 // Exercise content model. See specs/002-exercise-library-player/data-model.md.
 
-export type Technique = 'yoga' | 'taichi' | 'strength' | 'mobility' | 'cardio'
+export type Technique = 'yoga' | 'taichi' | 'strength' | 'mobility' | 'stretching' | 'cardio'
 
-export const TECHNIQUES: readonly Technique[] = ['yoga', 'taichi', 'strength', 'mobility', 'cardio']
+export const TECHNIQUES: readonly Technique[] = [
+  'yoga',
+  'taichi',
+  'strength',
+  'mobility',
+  'stretching',
+  'cardio',
+]
 
 export const TECHNIQUE_LABEL: Record<Technique, string> = {
   yoga: 'Yoga',
   taichi: 'Tai chi',
   strength: 'Strength',
   mobility: 'Mobility',
+  stretching: 'Stretching',
   cardio: 'Cardio',
 }
 

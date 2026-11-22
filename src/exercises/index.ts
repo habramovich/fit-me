@@ -76,6 +76,8 @@ import { butterfly } from './data/butterfly'
 import { sideLungeStretch } from './data/side-lunge-stretch'
 import { windshieldWipers } from './data/windshield-wipers'
 import { lowLungeHamstring } from './data/low-lunge-hamstring'
+import { superman } from './data/superman'
+import { standingTorsoTwist } from './data/standing-torso-twist'
 import {
   BODY_AREA_LABEL,
   TECHNIQUE_LABEL,
@@ -160,6 +162,9 @@ export const allExercises: readonly Exercise[] = [
   sideLungeStretch,
   windshieldWipers,
   lowLungeHamstring,
+  // Batch 7 (011)
+  superman,
+  standingTorsoTwist,
 ]
 
 const byId = new Map(allExercises.map((e) => [e.id, e]))

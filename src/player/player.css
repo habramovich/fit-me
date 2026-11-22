@@ -56,6 +56,24 @@
   padding: 10px 12px;
 }
 
+/* With the pose strip on, the moving figure gives up some height so the controls stay on screen. */
+/* A phone held upright has no height to spare: the moving figure gives some up. */
+@media (orientation: portrait) and (max-height: 960px) {
+  .player--poses .player__figure > .fm-figure .fm-figure__svg {
+    max-height: 20dvh;
+  }
+}
+
+/* A tablet held upright: room for bigger poses. */
+@media (orientation: portrait) and (min-height: 961px) {
+  .player--poses .player__figure > .fm-figure .fm-figure__svg {
+    max-height: 34dvh;
+  }
+  .player__figure .pose-strip--compact .fm-figure__svg {
+    max-height: 130px;
+  }
+}
+
 .player__info {
   flex: 1;
   display: flex;
@@ -74,9 +92,19 @@
   font-size: clamp(1.4rem, 5.5vw, 1.75rem);
 }
 
+.player__title > :first-child {
+  min-width: 0;
+}
+
 .player__count {
   flex: none;
   text-align: right;
+  /* Room for "0:00" and its detail line, so counting down moves nothing (011). */
+  min-width: 7.5rem;
+}
+
+.player__count .small {
+  white-space: nowrap;
 }
 
 .player__big {
@@ -97,6 +125,22 @@
 .paused-note {
   font-weight: 700;
   color: var(--warm);
+  margin: 0;
+}
+
+.paused-note[data-shown='false'] {
+  visibility: hidden;
+}
+
+/* Floats above the controls so it doesn't push them (011). */
+.player__toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 150px);
+  transform: translateX(-50%);
+  width: min(100% - 40px, 30rem);
+  z-index: 5;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.15);
 }
 
 .player__controls {
@@ -147,10 +191,15 @@
   .player__figure {
     flex: 1.2;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
   }
   .player__figure .fm-figure {
     width: 100%;
+  }
+  /* Room to spare beside the controls: the pose strip can be bigger. */
+  .player__figure .pose-strip--compact .fm-figure__svg {
+    max-height: 18dvh;
   }
   .player__info {
     flex: 1;
@@ -247,9 +296,21 @@
 }
 
 /* Music button (009): accent when on. */
-.music-btn {
+.music-btn,
+.poses-btn {
   flex: none;
   color: var(--muted);
+}
+
+.poses-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.poses-btn--on {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .music-btn--on {
