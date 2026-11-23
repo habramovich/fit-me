@@ -9,6 +9,7 @@ import { PlayerScreen } from '../player/PlayerScreen'
 import { SetPlayer } from '../player/SetPlayer'
 import { withDefaults } from '../profile/types'
 import { ExerciseDetail } from '../screens/ExerciseDetail'
+import { forgetFreshen } from '../screens/freshenMemory'
 import { Library } from '../screens/Library'
 import { PlanView } from '../screens/PlanView'
 import { Profile } from '../screens/Profile'
@@ -33,6 +34,10 @@ import './app.css'
 
 export function Shell({ user, record }: { user: SessionUser; record: UserRecord | null }) {
   const route = useRoute()
+  // Try something new keeps its cards across a look at an exercise, but not beyond (012).
+  useEffect(() => {
+    if (route.name !== 'set' && route.name !== 'exercise') forgetFreshen()
+  }, [route.name])
   const name = record?.displayName || user.displayName || user.email
   const profile = withDefaults(record?.profile)
   const history = useHistory(user.uid)
@@ -77,7 +82,7 @@ export function Shell({ user, record }: { user: SessionUser; record: UserRecord 
       screen = <PlanView params={effective.plan} profile={plannerProfile} history={history} />
       break
     case 'set':
-      screen = <SetView id={effective.id} />
+      screen = <SetView id={effective.id} profile={plannerProfile} />
       break
     case 'player':
       if (effective.routine.startsWith('set:')) {

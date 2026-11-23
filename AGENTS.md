@@ -36,7 +36,9 @@ local work uses the emulators with project `demo-fitme`.
   choice via `poses.ts`). The full figure keeps fixed-height breath and caption rows so the
   player never jumps (011)
 - `src/sets/`: pure set editing (`edit.ts`: order, parts, and the person's own reps, sets and
-  seconds per item, 011; tested) and `setMinutes`
+  seconds per item, 011; tested), `setMinutes`, and `freshen.ts` (012: "Try something new"
+  suggestions that add or replace exercises while keeping a set balanced; reuses the planner's
+  rules, pure and tested). Its panel is `src/screens/FreshenPanel.tsx`
 - `src/planner/`: pure planner (`plan.ts`: make, swap, repair; tested), `useKeptPlan`
 - `src/player/`: pure player machine (tested; a timed exercise starts with a 5 s `getReady`
   phase, 011), `usePlayer`, wake lock, player screen

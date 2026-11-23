@@ -103,7 +103,7 @@ class Usage {
   }
 }
 
-interface Candidate {
+export interface Candidate {
   exercise: Exercise
   versionKey: VersionKey
   version: Version
@@ -153,7 +153,12 @@ export function chooseVersion(
   return null
 }
 
-function eligible(e: Exercise, input: PlanInput, routine: RoutineDef): VersionKey | null {
+/** The version of `e` this person can use in `routine`, or null if the exercise is out. */
+export function eligible(
+  e: Exercise,
+  input: Pick<PlanInput, 'profile' | 'marks'>,
+  routine: RoutineDef,
+): VersionKey | null {
   const { profile, marks } = input
   if (marks[e.id] === 'notForMe') return null
   if (profile.techniques[e.technique] === 'none') return null
@@ -170,7 +175,12 @@ function eligible(e: Exercise, input: PlanInput, routine: RoutineDef): VersionKe
  * Whether a candidate can go in a phase. `relaxed` lets a phase borrow exercises listed for other
  * phases when it has none of its own (e.g. a Calm morning's main part from gentle warm-up moves).
  */
-function fitsPhase(c: Candidate, phase: Phase, routine: RoutineDef, relaxed = false): boolean {
+export function fitsPhase(
+  c: Candidate,
+  phase: Phase,
+  routine: RoutineDef,
+  relaxed = false,
+): boolean {
   if (routine.mainTechniques) {
     const isMainTech = routine.mainTechniques.includes(c.exercise.technique)
     if (phase === 'main' ? !isMainTech : isMainTech) return false
@@ -353,7 +363,7 @@ function secondsFor(v: Version, dose: Dose): number {
  * Scales a dose by `factor`, keeping reps or seconds inside the recommended range. Sets may change
  * by one only when `allowSets` (main part); warm-up and cool-down keep their sets.
  */
-function scaleDose(dose: Dose, factor: number, allowSets: boolean): Dose {
+export function scaleDose(dose: Dose, factor: number, allowSets: boolean): Dose {
   const [min, max] = dose.range
   if (dose.kind === 'time') {
     const s = Math.round((dose.seconds * factor) / 5) * 5
@@ -649,11 +659,15 @@ export function swapItem(input: PlanInput, items: readonly KeptItem[], index: nu
   return items.map((it, i) => (i === index ? next : it))
 }
 
-type Unfit = 'notForMe' | 'profile' | 'removed'
+export type Unfit = 'notForMe' | 'profile' | 'removed'
 
 /** Why a kept item can't be used any more, or null if it still can. */
-function unfit(input: PlanInput, ctx: Context, item: KeptItem): Unfit | null {
-  const e = ctx.byId.get(item.exerciseId)
+export function unfit(
+  input: Pick<PlanInput, 'profile' | 'marks'>,
+  byId: ReadonlyMap<string, Exercise>,
+  item: { exerciseId: string; version: VersionKey },
+): Unfit | null {
+  const e = byId.get(item.exerciseId)
   const v = e?.[item.version]
   if (!e || !v) return 'removed'
   if (input.marks[e.id] === 'notForMe') return 'notForMe'
@@ -665,7 +679,7 @@ function unfit(input: PlanInput, ctx: Context, item: KeptItem): Unfit | null {
   return null
 }
 
-const UNFIT_TEXT: Record<Unfit, string> = {
+export const UNFIT_TEXT: Record<Unfit, string> = {
   notForMe: 'is now Not for me',
   profile: 'no longer fits your profile',
   removed: 'is no longer in the library',
@@ -685,7 +699,7 @@ export function repairPlan(
   let out = [...items]
   const notes: string[] = []
   for (let i = 0; i < out.length;) {
-    const why = unfit(input, ctx, out[i])
+    const why = unfit(input, ctx.byId, out[i])
     if (!why) {
       i++
       continue
