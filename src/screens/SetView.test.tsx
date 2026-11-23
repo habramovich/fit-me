@@ -1,9 +1,16 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SetsContext, type SetsValue } from '../app/setsContext'
 import type { SavedSet } from '../data/repo/sets'
-import type { Dose } from '../exercises/types'
+import { allExercises, getExercise } from '../exercises'
+import type { Dose, Phase } from '../exercises/types'
+import { todayKey } from '../planner/history'
+import { DEFAULT_PROFILE, type Profile } from '../profile/types'
+import type { SetItem } from '../sets/edit'
+import { applySuggestion, changeText, PHASE_LABEL, suggest, type Suggestion } from '../sets/freshen'
+import { forgetFreshen } from './freshenMemory'
 import { SetView } from './SetView'
 
 const dose: Dose = { kind: 'reps', reps: 8, range: [6, 10], sets: 1, perSide: false }
@@ -19,7 +26,7 @@ const set: SavedSet = {
   ],
 }
 
-function renderSet(over: Partial<SetsValue> = {}) {
+function renderSet(over: Partial<SetsValue> = {}, profile: Profile | null = DEFAULT_PROFILE) {
   const value: SetsValue = {
     sets: [set],
     create: vi.fn(() => 'new'),
@@ -30,13 +37,16 @@ function renderSet(over: Partial<SetsValue> = {}) {
   }
   render(
     <SetsContext.Provider value={value}>
-      <SetView id="s1" />
+      <SetView id="s1" profile={profile} />
     </SetsContext.Provider>,
   )
   return value
 }
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  forgetFreshen()
+})
 
 describe('SetView', () => {
   it('shows the set grouped by part with Start', () => {
@@ -145,5 +155,143 @@ describe('SetView amounts (011 US3)', () => {
     })
     await user.click(screen.getByRole('button', { name: /change amount for Cat–cow/ }))
     expect(screen.getByText(/Recommended 6–10/)).toHaveClass('dose-hint--out')
+  })
+})
+
+// ---------- Try something new (012) ----------
+
+function real(exerciseId: string, phase: Phase): SetItem {
+  return { exerciseId, version: 'standard', phase, dose: getExercise(exerciseId)!.standard.dose }
+}
+const fresh: SavedSet = {
+  id: 'f1',
+  name: 'Short calm',
+  source: 'plan:calm',
+  updatedAt: new Date(),
+  items: [real('pelvic-tilts', 'warmup'), real('butterfly', 'main'), real('childs-pose', 'main')],
+}
+const expected = (items: SetItem[] = fresh.items) =>
+  suggest({
+    set: { ...fresh, items },
+    library: allExercises,
+    profile: DEFAULT_PROFILE,
+    marks: {},
+    today: todayKey(),
+    skipped: [],
+  })
+
+/** Renders the set with a provider that keeps edits, as the real one does. */
+function renderFresh() {
+  const saveItems = vi.fn()
+  function Provider() {
+    const [items, setItems] = useState(fresh.items)
+    const value: SetsValue = {
+      sets: [{ ...fresh, items }],
+      create: vi.fn(() => 'new'),
+      saveItems: (id, next) => {
+        saveItems(id, next)
+        setItems(next)
+      },
+      rename: vi.fn(),
+      remove: vi.fn(),
+    }
+    return (
+      <SetsContext.Provider value={value}>
+        <SetView id="f1" profile={DEFAULT_PROFILE} />
+      </SetsContext.Provider>
+    )
+  }
+  render(<Provider />)
+  return saveItems
+}
+
+const card = (s: Suggestion) => screen.getByRole('article', { name: changeText(s) })
+const accept = (s: Suggestion) => (s.change.kind === 'add' ? 'Add' : 'Replace')
+
+describe('SetView: Try something new (012)', () => {
+  it('waits for the profile', () => {
+    renderSet({}, null)
+    expect(screen.getByRole('button', { name: 'Loading your profile…' })).toBeDisabled()
+  })
+
+  it('shows the suggestions as cards (US1)', async () => {
+    renderFresh()
+    await userEvent.click(screen.getByRole('button', { name: 'Try something new' }))
+    const list = expected()
+    expect(list.length).toBeGreaterThan(1)
+    expect(screen.getAllByRole('article')).toHaveLength(list.length)
+    for (const s of list) {
+      expect(within(card(s)).getByText(s.reason)).toBeInTheDocument()
+      expect(within(card(s)).getByRole('button', { name: accept(s) })).toBeInTheDocument()
+    }
+  })
+
+  it('accepts an Add and a Replace, saving the set at once', async () => {
+    const user = userEvent.setup()
+    const saveItems = renderFresh()
+    await user.click(screen.getByRole('button', { name: 'Try something new' }))
+    const list = expected()
+    const add = list.find((s) => s.change.kind === 'add')!
+    const replace = list.find((s) => s.change.kind === 'replace')!
+    await user.click(within(card(add)).getByRole('button', { name: 'Add' }))
+    const afterAdd = applySuggestion(fresh.items, add)
+    expect(saveItems).toHaveBeenLastCalledWith('f1', afterAdd)
+    expect(screen.queryByRole('article', { name: changeText(add) })).not.toBeInTheDocument()
+    await user.click(within(card(replace)).getByRole('button', { name: 'Replace' }))
+    expect(saveItems).toHaveBeenLastCalledWith('f1', applySuggestion(afterAdd, replace))
+  })
+
+  it('Undo restores the set and the card', async () => {
+    const user = userEvent.setup()
+    const saveItems = renderFresh()
+    await user.click(screen.getByRole('button', { name: 'Try something new' }))
+    const [first] = expected()
+    await user.click(within(card(first)).getByRole('button', { name: accept(first) }))
+    expect(screen.getByText(/^(Added|Replaced) /)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(saveItems).toHaveBeenLastCalledWith('f1', fresh.items)
+    // Every card is back, including any the accept made obsolete.
+    const labels = screen.getAllByRole('article').map((a) => a.getAttribute('aria-label'))
+    expect(labels).toEqual(expected().map(changeText))
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
+  it('Skip removes a card without changing the set; Done closes', async () => {
+    const user = userEvent.setup()
+    const saveItems = renderFresh()
+    await user.click(screen.getByRole('button', { name: 'Try something new' }))
+    const [first] = expected()
+    await user.click(within(card(first)).getByRole('button', { name: 'Skip' }))
+    expect(screen.queryByRole('article', { name: changeText(first) })).not.toBeInTheDocument()
+    expect(saveItems).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.queryByRole('region', { name: 'Try something new' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try something new' })).toBeInTheDocument()
+  })
+
+  it('Another idea keeps the change with a different exercise (US2)', async () => {
+    const user = userEvent.setup()
+    renderFresh()
+    await user.click(screen.getByRole('button', { name: 'Try something new' }))
+    const s = expected().find((x) => x.hasAnother)!
+    await user.click(within(card(s)).getByRole('button', { name: 'Another idea' }))
+    expect(screen.queryByRole('article', { name: changeText(s) })).not.toBeInTheDocument()
+    const change = s.change
+    const same = (label: string) =>
+      change.kind === 'add'
+        ? label.startsWith('Add ') && label.endsWith(` to ${PHASE_LABEL[change.phase]}`)
+        : label.startsWith(`Replace ${getExercise(change.target.exerciseId)!.name} with `)
+    const labels = screen.getAllByRole('article').map((a) => a.getAttribute('aria-label')!)
+    expect(labels.filter(same)).toHaveLength(1)
+  })
+
+  it('the review updates after a change (US3)', async () => {
+    const user = userEvent.setup()
+    renderFresh()
+    await user.click(screen.getByRole('button', { name: 'Try something new' }))
+    const before = screen.getByLabelText('How the set is balanced').textContent
+    const add = expected().find((x) => x.change.kind === 'add')!
+    await user.click(within(card(add)).getByRole('button', { name: 'Add' }))
+    expect(screen.getByLabelText('How the set is balanced').textContent).not.toBe(before)
   })
 })

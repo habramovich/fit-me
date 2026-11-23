@@ -1,10 +1,12 @@
 // A saved set: arrange, rename, delete, start (spec 004 US1, US2).
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useMarks } from '../app/marksContext'
 import { goBack, href, navigate } from '../app/router'
 import { useSets } from '../app/setsContext'
 import { formatDose, getExercise } from '../exercises'
 import type { Dose, Phase } from '../exercises/types'
 import { Figure } from '../figure/Figure'
+import type { Profile } from '../profile/types'
 import {
   DOSE_LIMITS,
   PHASE_ORDER,
@@ -21,6 +23,7 @@ import {
   type SetItem,
 } from '../sets/edit'
 import { setMinutes } from '../sets/minutes'
+import { Freshen } from './FreshenPanel'
 
 const PHASE_LABEL: Record<Phase, string> = {
   warmup: 'Warm-up',
@@ -35,8 +38,10 @@ interface Drag {
   target: { phase: Phase; pos: number }
 }
 
-export function SetView({ id }: { id: string }) {
+/** `profile` is null until the person's record has loaded (suggestions wait for it, 012). */
+export function SetView({ id, profile }: { id: string; profile: Profile | null }) {
   const { sets, saveItems, rename, remove } = useSets()
+  const { marks, loaded: marksLoaded } = useMarks()
   const [renaming, setRenaming] = useState<string | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
   /** The item whose amount editor is open (011 US3); one at a time. */
@@ -167,6 +172,12 @@ export function SetView({ id }: { id: string }) {
           Drag the handle to reorder, or use the arrows. Tap an amount to change it. Changes save as
           you go.
         </p>
+        <Freshen
+          set={set}
+          profile={profile}
+          marks={marksLoaded ? marks : null}
+          saveItems={saveItems}
+        />
       </header>
 
       {PHASE_ORDER.map((phase) => {
